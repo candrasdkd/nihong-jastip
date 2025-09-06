@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Customer, Order } from '../types';
 import { formatIDR } from '../utils/format';
 import { Button } from '../components/ui/Button';
@@ -7,6 +7,14 @@ import { Select } from '../components/ui/Select';
 import { Card } from '../components/ui/Card';
 import { OrderFormModal } from '../components/OrderFormModal';
 import { InvoiceModal } from '../components/InvoiceModal';
+import {
+  createOrder,
+  deleteOrder,
+  fromExtended,
+  subscribeOrders,
+  toExtended,
+  updateOrder,
+} from '../services/ordersFirebase';
 
 const NAVY = '#0a2342';
 const NAVY_DARK = '#081a31';
@@ -19,6 +27,15 @@ type ExtendedOrder = Order & Partial<{
   hargaOngkir: number;
   hargaOngkirMarkup: number;
 }>;
+
+// util default range: start = awal bulan 2 bulan lalu; end = akhir bulan ini
+function toInputDate(d: Date) {
+  // yyyy-MM-dd
+  const iso = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString();
+  return iso.slice(0, 10);
+}
+function startOfMonth(d: Date) { return new Date(d.getFullYear(), d.getMonth(), 1); }
+function endOfMonth(d: Date) { return new Date(d.getFullYear(), d.getMonth() + 1, 0); }
 
 function StatusPill({ status }: { status: string }) {
   const map: Record<string, string> = {
@@ -48,24 +65,28 @@ export function OrdersPage({
 }) {
   const [q, setQ] = useState('');
   const [statusFilter, setStatusFilter] = useState<string | ''>('');
+
+  // DEFAULT: 2 bulan lalu (awal bulan) → bulan ini (akhir bulan)
+  const now = useMemo(() => new Date(), []);
+  const defaultFrom = useMemo(() => {
+    const m2 = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+    return toInputDate(startOfMonth(m2));
+  }, [now]);
+  const defaultTo = useMemo(() => toInputDate(endOfMonth(now)), [now]);
+
+  const [dateFrom, setDateFrom] = useState<string>(defaultFrom);
+  const [dateTo, setDateTo] = useState<string>(defaultTo);
+
   const [editing, setEditing] = useState<ExtendedOrder | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showInvoice, setShowInvoice] = useState<{ show: boolean; order?: ExtendedOrder; itemIds?: string[] }>({ show: false });
 
-  // ⬇️ Tambahan helper untuk validasi selection
-  const selectedOrders = useMemo(
-    () => orders.filter(o => selectedIds.includes(o.id)),
-    [orders, selectedIds]
-  );
-  const sameCustomer =
-    selectedOrders.length > 0 &&
-    selectedOrders.every(o => o.namaPelanggan === selectedOrders[0]?.namaPelanggan);
-
+  const selectedOrders = useMemo(() => orders.filter(o => selectedIds.includes(o.id)), [orders, selectedIds]);
+  const sameCustomer = selectedOrders.length > 0 && selectedOrders.every(o => o.namaPelanggan === selectedOrders[0]?.namaPelanggan);
   const hasUnpaid = selectedOrders.some(o => String(o.status) === 'Belum Membayar');
-
-  // Hanya boleh bikin invoice jika: ada pilihan + pelanggan sama + tidak ada "Belum Membayar"
   const canCreateInvoice = selectedOrders.length > 0 && sameCustomer && !hasUnpaid;
+
   function compute(o: ExtendedOrder) {
     const kg = Math.ceil(Number(o.jumlahKg ?? 0));
     const baseOngkir = typeof o.hargaOngkir === 'number' ? o.hargaOngkir : kg * unitPrice;
@@ -77,48 +98,92 @@ export function OrdersPage({
     return { kg, baseJastip, jastipMarkup, baseOngkir, ongkirMarkup, totalPembayaran, totalKeuntungan };
   }
 
-  const filtered = useMemo(() => {
-    return orders.filter((o) => {
-      const hit =
-        (o.no ?? '').toLowerCase().includes(q.toLowerCase()) ||
-        (o.namaBarang ?? '').toLowerCase().includes(q.toLowerCase()) ||
-        (o.namaPelanggan ?? '').toLowerCase().includes(q.toLowerCase()) ||
-        (o.kategori ?? '').toLowerCase().includes(q.toLowerCase()) ||
-        (o.pengiriman ?? '').toLowerCase().includes(q.toLowerCase()) ||
-        (o.catatan ?? '').toLowerCase().includes(q.toLowerCase());
-      const statusOk = statusFilter ? String(o.status) === statusFilter : true;
-      return hit && statusOk;
-    });
-  }, [orders, q, statusFilter]);
+  // 🔄 Subscribe ke Firestore berdasarkan: q, status, dateFrom, dateTo, sort desc
+  useEffect(() => {
+    const unsub = subscribeOrders(
+      {
+        q,
+        status: statusFilter || undefined,
+        fromInput: dateFrom || undefined,
+        toInput: dateTo || undefined,
+        limit: 250, // atur sesuai kebutuhan
+        sort: 'desc',
+      },
+      (rows) => {
+        setOrders(() => rows.map(toExtended));
+        // bersihkan pilihan yang sudah tidak ada
+        setSelectedIds(prev => prev.filter(id => rows.some(x => x.id === id)));
+      }
+    );
+    return () => unsub();
+  }, [q, statusFilter, dateFrom, dateTo, setOrders]);
 
-  function handleDelete(id: string) {
+  async function handleDelete(id: string) {
     if (!confirm('Hapus pesanan ini?')) return;
-    setOrders((prev) => prev.filter((x) => x.id !== id));
+    await deleteOrder(id);
   }
+
+  // ======== UI Filter Popover ========
+  const [openFilter, setOpenFilter] = useState(false);
+  const filterCount = useMemo(() => {
+    let n = 0;
+    if (statusFilter) n++;
+    if (dateFrom !== defaultFrom) n++;
+    if (dateTo !== defaultTo) n++;
+    return n;
+  }, [statusFilter, dateFrom, dateTo, defaultFrom, defaultTo]);
+
+  const resetFilters = () => {
+    setStatusFilter('');
+    setDateFrom(defaultFrom);
+    setDateTo(defaultTo);
+  };
 
   return (
     <div className="space-y-4">
       {/* Filter & Action */}
       <div className="flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
-        <div className="flex gap-2 w-full sm:w-auto">
+        {/* Kiri: Search + Filter btn */}
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto items-center">
           <Input
-            placeholder="Cari no/barang/pelanggan/kategori/pengiriman/catatan"
+            placeholder="Cari token (no/barang/pelanggan/kategori/pengiriman/catatan)"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            className="focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+            className="flex-grow min-w-[220px] focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
           />
-          <Select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as any)}
-            className="focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-          >
-            <option value="">Semua Status</option>
-            {['Belum Membayar', 'Pembayaran Selesai', 'Sedang Pengiriman', 'Sudah Diterima', 'Pending', 'Diproses', 'Selesai', 'Dibatalkan'].map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </Select>
+
+          {/* Tombol Filter + Popover */}
+          <div className="relative">
+            <Button
+              onClick={() => setOpenFilter(v => !v)}
+              className="bg-white border ring-1 ring-[#0a2342]/10 hover:bg-orange-50 text-[#000]"
+              title="Filter status & tanggal"
+            >
+              Filter
+              {filterCount > 0 && (
+                <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs rounded-full bg-orange-100 text-orange-700 ring-1 ring-orange-200">
+                  {filterCount}
+                </span>
+              )}
+            </Button>
+
+            {openFilter && (
+              <FilterPopover
+                onClose={() => setOpenFilter(false)}
+                statusFilter={statusFilter}
+                setStatusFilter={setStatusFilter}
+                dateFrom={dateFrom}
+                setDateFrom={setDateFrom}
+                dateTo={dateTo}
+                setDateTo={setDateTo}
+                onReset={resetFilters}
+              />
+            )}
+          </div>
         </div>
-        <div className="flex gap-2">
+
+        {/* Kanan: Actions */}
+        <div className="flex flex-wrap gap-2">
           <Button
             onClick={() => { setEditing(null); setShowForm(true); }}
             className="bg-orange-600 hover:bg-orange-700 text-white border border-orange-700/20"
@@ -128,25 +193,15 @@ export function OrdersPage({
           <Button
             onClick={() => {
               if (selectedOrders.length === 0) return;
-
-              if (!sameCustomer) {
-                alert('Silakan pilih pesanan dari pelanggan yang sama.');
-                return;
-              }
-              if (hasUnpaid) {
-                alert('Tidak bisa membuka/membuat invoice untuk pesanan dengan status "Belum Membayar".');
-                return;
-              }
-
+              if (!sameCustomer) { alert('Silakan pilih pesanan dari pelanggan yang sama.'); return; }
+              if (hasUnpaid) { alert('Tidak bisa membuka/membuat invoice untuk pesanan dengan status "Belum Membayar".'); return; }
               setShowInvoice({ show: true, order: selectedOrders[0], itemIds: selectedIds });
             }}
             disabled={!canCreateInvoice}
-            className={`bg-[#0a2342] hover:bg-[#081a31] text-white border border-[#0a2342]/20 ${!canCreateInvoice ? 'opacity-60 cursor-not-allowed' : ''
-              }`}
+            className={`bg-[#0a2342] hover:bg-[#081a31] text-white border border-[#0a2342]/20 ${!canCreateInvoice ? 'opacity-60 cursor-not-allowed' : ''}`}
           >
             Buat Invoice {selectedIds.length > 0 ? `(${selectedIds.length})` : ''}
           </Button>
-
         </div>
       </div>
 
@@ -158,14 +213,11 @@ export function OrdersPage({
               <th className="px-4 py-3 font-semibold border-b border-white/10">
                 <input
                   type="checkbox"
-                  checked={filtered.length > 0 && filtered.every(o => selectedIds.includes(o.id))}
+                  checked={orders.length > 0 && orders.every(o => selectedIds.includes(o.id))}
                   onChange={(e) => {
-                    const ids = filtered.map(o => o.id);
-                    if (e.target.checked) {
-                      setSelectedIds(prev => Array.from(new Set([...prev, ...ids])));
-                    } else {
-                      setSelectedIds(prev => prev.filter(id => !ids.includes(id)));
-                    }
+                    const ids = orders.map(o => o.id);
+                    if (e.target.checked) setSelectedIds(prev => Array.from(new Set([...prev, ...ids])));
+                    else setSelectedIds(prev => prev.filter(id => !ids.includes(id)));
                   }}
                 />
               </th>
@@ -180,7 +232,7 @@ export function OrdersPage({
           </thead>
 
           <tbody>
-            {filtered.map((o) => {
+            {orders.map((o) => {
               const d = compute(o);
               return (
                 <tr key={o.id} className="odd:bg-white even:bg-orange-50 hover:bg-orange-100/60 transition-colors">
@@ -188,9 +240,7 @@ export function OrdersPage({
                     <input
                       type="checkbox"
                       checked={selectedIds.includes(o.id)}
-                      onChange={(e) => {
-                        setSelectedIds(prev => e.target.checked ? [...prev, o.id] : prev.filter(id => id !== o.id));
-                      }}
+                      onChange={(e) => setSelectedIds(prev => e.target.checked ? [...prev, o.id] : prev.filter(id => id !== o.id))}
                     />
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">{o.no}</td>
@@ -206,23 +256,18 @@ export function OrdersPage({
                   <td className="px-4 py-3 text-right">{formatIDR(d.ongkirMarkup)}</td>
                   <td className="px-4 py-3 text-right font-semibold">{formatIDR(d.totalPembayaran)}</td>
                   <td className="px-4 py-3 text-right font-semibold">{formatIDR(d.totalKeuntungan)}</td>
-                  <td className="px-4 py-3">
-                    <StatusPill status={String(o.status) || 'Belum Membayar'} />
-                  </td>
-                  <td className="px-4 py-3 w-[320px]">
-                    <div className="truncate" title={o.catatan ?? ''}>{o.catatan ?? '-'}</div>
-                  </td>
+                  <td className="px-4 py-3"><StatusPill status={String(o.status) || 'Belum Membayar'} /></td>
+                  <td className="px-4 py-3 w-[320px]"><div className="truncate" title={o.catatan ?? ''}>{o.catatan ?? '-'}</div></td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <div className="flex gap-2">
                       <Button variant="ghost" className="text-[#0a2342] hover:bg-[#0a2342]/5" onClick={() => { setEditing(o); setShowForm(true); }}>Edit</Button>
-                      {/* HAPUS tombol Invoice per baris */}
                       <Button variant="danger" onClick={() => handleDelete(o.id)}>Hapus</Button>
                     </div>
                   </td>
                 </tr>
               );
             })}
-            {filtered.length === 0 && (
+            {orders.length === 0 && (
               <tr><td className="px-4 py-6 text-center text-neutral-500" colSpan={16}>Tidak ada data.</td></tr>
             )}
           </tbody>
@@ -231,7 +276,7 @@ export function OrdersPage({
 
       {/* Mobile Cards */}
       <div className="sm:hidden space-y-3">
-        {filtered.map((o) => {
+        {orders.map((o) => {
           const d = compute(o);
           return (
             <Card key={o.id} className="p-4 border border-[#0a2342]/10">
@@ -240,9 +285,7 @@ export function OrdersPage({
                   <input
                     type="checkbox"
                     checked={selectedIds.includes(o.id)}
-                    onChange={(e) => {
-                      setSelectedIds(prev => e.target.checked ? [...prev, o.id] : prev.filter(id => id !== o.id));
-                    }}
+                    onChange={(e) => setSelectedIds(prev => e.target.checked ? [...prev, o.id] : prev.filter(id => id !== o.id))}
                   />
                   <div>
                     <div className="text-xs text-neutral-500">No</div>
@@ -270,25 +313,23 @@ export function OrdersPage({
               </div>
               <div className="mt-3 flex gap-2">
                 <Button variant="ghost" className="text-[#0a2342] hover:bg-[#0a2342]/5" onClick={() => { setEditing(o); setShowForm(true); }}>Edit</Button>
-                {/* HAPUS tombol Invoice di sini */}
                 <Button variant="danger" onClick={() => handleDelete(o.id)}>Hapus</Button>
               </div>
             </Card>
           );
         })}
-        {filtered.length === 0 && <p className="text-center text-sm text-neutral-500">Tidak ada data.</p>}
+        {orders.length === 0 && <p className="text-center text-sm text-neutral-500">Tidak ada data.</p>}
       </div>
 
       {showForm && (
         <OrderFormModal
-          customers={customers}
+          customers={customers.length > 0 ? customers : []}
           initial={editing || undefined}
           onClose={() => setShowForm(false)}
-          onSubmit={(val) => {
-            setOrders((prev) => {
-              if (editing) return prev.map((p) => (p.id === editing.id ? (val as ExtendedOrder) : p));
-              return [val as ExtendedOrder, ...prev];
-            });
+          onSubmit={async (val) => {
+            const dto = fromExtended(val as any);
+            if (editing?.id) await updateOrder(editing.id, dto, unitPrice);
+            else await createOrder(dto, unitPrice);
             setShowForm(false);
           }}
           existing={orders}
@@ -300,14 +341,126 @@ export function OrdersPage({
         <InvoiceModal
           order={showInvoice.order}
           orders={orders}
-          itemIds={showInvoice.itemIds}  // ⬅️ penting
+          itemIds={showInvoice.itemIds}
           customer={customers.find((c) => c.nama === showInvoice.order!.namaPelanggan)}
           onClose={() => setShowInvoice({ show: false })}
           unitPrice={unitPrice}
         />
       )}
+    </div>
+  );
+}
 
+/** Popover kompak untuk Status + Range Tanggal */
+function FilterPopover({
+  onClose,
+  statusFilter,
+  setStatusFilter,
+  dateFrom,
+  setDateFrom,
+  dateTo,
+  setDateTo,
+  onReset,
+}: {
+  onClose: () => void;
+  statusFilter: string | '';
+  setStatusFilter: (v: string) => void;
+  dateFrom: string;
+  setDateFrom: (v: string) => void;
+  dateTo: string;
+  setDateTo: (v: string) => void;
+  onReset: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
 
+  // ESC untuk menutup
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  // Klik di luar untuk menutup
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [onClose]);
+
+  return (
+    <div
+      ref={ref}
+      role="dialog"
+      aria-label="Filter pesanan"
+      className="absolute z-50 right-0 mt-2 w-[340px] rounded-xl border shadow-lg bg-white ring-1 ring-[#0a2342]/10 p-3"
+    >
+      <div className="mb-2 flex items-center justify-between">
+        <div className="text-sm font-semibold text-[#0a2342]">Filter</div>
+        <button
+          onClick={onClose}
+          className="text-xs text-neutral-500 hover:text-neutral-700"
+          aria-label="Tutup"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div className="space-y-3">
+        <div>
+          <div className="text-xs text-neutral-600 mb-1">Status</div>
+          <Select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter((e.target as HTMLSelectElement).value)}
+            className="w-full focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+          >
+            <option value="">Semua Status</option>
+            {['Belum Membayar', 'Pembayaran Selesai', 'Sedang Pengiriman', 'Sudah Diterima', 'Pending', 'Diproses', 'Selesai', 'Dibatalkan']
+              .map(s => <option key={s} value={s}>{s}</option>)}
+          </Select>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <div className="text-xs text-neutral-600 mb-1">Dari</div>
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom((e.target as HTMLInputElement).value)}
+              className="w-full focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+              aria-label="Tanggal dari"
+            />
+          </div>
+          <div>
+            <div className="text-xs text-neutral-600 mb-1">Sampai</div>
+            <Input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo((e.target as HTMLInputElement).value)}
+              className="w-full focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+              aria-label="Tanggal sampai"
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-2 pt-1">
+          <Button
+            variant="ghost"
+            onClick={onReset}
+            className="text-[#0a2342] hover:bg-[#0a2342]/5"
+            title="Reset filter"
+          >
+            Reset
+          </Button>
+          <Button
+            onClick={onClose}
+            className="bg-[#0a2342] hover:bg-[#081a31] text-white border border-[#0a2342]/20"
+          >
+            Terapkan
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

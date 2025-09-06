@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Customer, Order, OrderStatus } from '../types';
 import { computeTotal, genOrderNo, todayStr } from '../utils/helpers';
 import { Input } from './ui/Input';
@@ -24,21 +24,20 @@ export function OrderFormModal({
   customers: Customer[];
   initial?: Order;
   onClose: () => void;
-  onSubmit: (order: Order) => void;
+  onSubmit: (order: Order) => void | Promise<void>;
   existing: Order[];
   unitPrice: number;
 }) {
-  console.log('OrderFormModal', initial);
+  const [loading, setLoading] = useState(false);
 
-  // Basic
-  const [no] = useState(initial?.no || genOrderNo(existing));
+  // Use a unique, timestamp-based order number for new orders
+  const [no] = useState(initial?.no || `ORD-${new Date().getTime()}`);
   const [namaBarang, setNamaBarang] = useState(initial?.namaBarang || '');
   const [kategori, setKategori] = useState(initial?.kategori || 'Makanan');
   const [tanggal, setTanggal] = useState(initial?.tanggal || todayStr());
-  const [namaPelanggan, setNamaPelanggan] = useState(initial?.namaPelanggan || (customers[0]?.nama || ''));
+  const [namaPelanggan, setNamaPelanggan] = useState(initial?.namaPelanggan || '');
   const [jumlahKg, setJumlahKg] = useState<number>(initial?.jumlahKg || 1);
 
-  // New fields
   const [pengiriman, setPengiriman] = useState<string>((initial as any)?.pengiriman || 'INDO - JPG');
   const [catatan, setCatatan] = useState<string>((initial as any)?.catatan || '');
 
@@ -47,7 +46,7 @@ export function OrderFormModal({
   const [hargaJastipManual, setHargaJastipManual] = useState<number>(Number((initial as any)?.hargaJastipManual ?? 0));
   const [hargaJastipMarkup, setHargaJastipMarkup] = useState<number>(Number((initial as any)?.hargaJastipMarkup ?? 0));
   const [hargaOngkir, setHargaOngkir] = useState<number>((initial as any)?.hargaOngkir ?? computeTotal(jumlahKg, unitPrice));
-  const [hargaOngkirMarkup, setHargaOngkirMarkup] = useState<number>(Number((initial as any)?.hargaOngkirMarkup ?? 0));
+  const [hargaOngkirMarkup, setHargaOngkirMarkup] = useState<number>(Number((initial as any)?.hargaOngkirMarkup ?? computeTotal(jumlahKg, unitPrice)));
   const [status, setStatus] = useState<string>((initial?.status as any) || 'Belum Membayar');
 
   const baseOngkir = useMemo(
@@ -61,26 +60,40 @@ export function OrderFormModal({
   );
   const totalKeuntungan = useMemo(
     () => ((Number(hargaJastipMarkup) || 0) + (Number(hargaOngkirMarkup) || 0) - (Number(hargaJastipManual) || 0) - (Number(baseOngkir) || 0)),
-    [hargaJastipMarkup, hargaOngkirMarkup, hargaJastipManual, baseOngkir]
+    [hargaJastipMarkup, hargaOngkirMarkup, hargaJastipManual, baseOngkir, jumlahKg, unitPrice]
   );
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    const payload: any = {
-      id: initial?.id || crypto.randomUUID(),
-      no, namaBarang, kategori, tanggal, namaPelanggan,
-      jumlahKg: num(jumlahKg),
-      totalHarga: baseOngkir, // legacy
-      status,
-      pengiriman: pengiriman || '',
-      catatan: catatan || '',
-      hargaJastip: num(hargaJastipManual),
-      hargaJastipMarkup: num(hargaJastipMarkup),
-      hargaOngkir: num(baseOngkir),
-      hargaOngkirMarkup: num(hargaOngkirMarkup),
-      _computed: { ceilKg, totalPembayaran, totalKeuntungan, unitPriceAtSave: unitPrice, useAutoJastip },
-    };
-    onSubmit(payload as Order);
+    if (loading) return;
+    setLoading(true);
+    try {
+      const payload: any = {
+        id: initial?.id || crypto.randomUUID(),
+        no, namaBarang, kategori, tanggal, namaPelanggan,
+        jumlahKg: num(jumlahKg),
+        totalHarga: baseOngkir,
+        status,
+        pengiriman: pengiriman || '',
+        catatan: catatan || '',
+        hargaJastip: num(hargaJastipManual),
+        hargaJastipMarkup: num(hargaJastipMarkup),
+        hargaOngkir: num(baseOngkir),
+        hargaOngkirMarkup: num(hargaOngkirMarkup),
+        totalKeuntungan,
+        totalPembayaran,
+        kgCeil: ceilKg,
+        _computed: { unitPriceAtSave: unitPrice, useAutoJastip },
+      };
+      console.log('payload', payload);
+
+      await Promise.resolve(onSubmit(payload as Order));
+    } catch (err: any) {
+      console.error(err);
+      alert(`Gagal menyimpan: ${err?.message || err}`);
+    } finally {
+      setLoading(false);
+    }
   }
 
   const customerOptions: Option[] = useMemo(
@@ -89,169 +102,187 @@ export function OrderFormModal({
   );
 
   return (
-    <Modal onClose={onClose} title={initial ? 'Edit Pesanan' : 'Tambah Pesanan'} size="5xl" contentClassName="w-full">
+    <Modal onClose={loading ? () => { } : onClose} title={initial ? 'Edit Pesanan' : 'Tambah Pesanan'} size="5xl" contentClassName="w-full">
       <div className="max-h-[60vh] overflow-y-auto p-2">
-        <form id="order-form" onSubmit={submit} className="grid grid-cols-1 gap-6">
-          {/* ===== Info Pesanan ===== */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* No Pesanan: otomatis & disabled */}
-            <Input
-              label="No Pesanan"
-              value={no}
-              onChange={() => { }}
-              required
-              disabled
-              title="No pesanan dibuat otomatis dan tidak bisa diubah"
-              className="focus:ring-2 focus:ring-orange-500 focus:border-orange-500 opacity-80 cursor-not-allowed"
-            />
-
-            <Input
-              label="Nama Barang"
-              value={namaBarang}
-              onChange={(e) => setNamaBarang(e.target.value)}
-              required
-              className="focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-            />
-
-            {/* Kategori */}
-            <div className="lg:col-span-1">
-              <label className="block mb-1 text-sm text-neutral-600">Kategori</label>
-              <Select
-                value={kategori}
-                onChange={(e) => setKategori(e.target.value)}
-                className="focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-              >
-                {['Makanan', 'Minuman', 'Kecantikan', 'Elektronik', 'Lainnya'].map(k => (
-                  <option key={k} value={k}>{k}</option>
-                ))}
-              </Select>
-            </div>
-
-            <Input
-              label="Tanggal Pemesanan"
-              type="date"
-              value={tanggal}
-              onChange={(e) => setTanggal(e.target.value)}
-              required
-              className="focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-            />
-
-            {/* Nama Pelanggan: searchable di dalam dropdown */}
-            <SearchableSelect
-              label="Nama Pelanggan"
-              value={namaPelanggan}
-              onChange={setNamaPelanggan}
-              options={customerOptions}
-              className=""
-            />
-
-            <div>
+        <form id="order-form" onSubmit={submit} className="grid grid-cols-1 gap-6" aria-busy={loading}>
+          <fieldset disabled={loading} className={loading ? 'opacity-70 transition-opacity' : ''}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <Input
-                label="Berat (Kg)"
-                type="number"
-                step="0.01"
-                min={0}
-                value={toStr(jumlahKg)}
-                onChange={(e) => setJumlahKg(num(e.target.value))}
+                label="No Pesanan"
+                value={no}
+                onChange={() => { }}
+                required
+                disabled
+                title="No pesanan dibuat otomatis dan tidak bisa diubah"
+                className="focus:ring-2 focus:ring-orange-500 focus:border-orange-500 opacity-80 cursor-not-allowed"
+              />
+
+              <Input
+                label="Nama Barang"
+                value={namaBarang}
+                onChange={(e) => setNamaBarang(e.target.value)}
                 required
                 className="focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
               />
-              <p className="mt-1 text-xs text-neutral-500">* Pembulatan ke atas (ceil).</p>
-            </div>
 
-            <Input
-              label="Lokasi Pengiriman"
-              value={pengiriman}
-              onChange={(e) => setPengiriman(e.target.value)}
-              className="focus:ring-2 focus:ring-orange-500 focus:border-orange-500 lg:col-span-2"
-            />
-
-            <div className="lg:col-span-1">
-              <label className="block mb-1 text-sm text-neutral-600">Status</label>
-              <Select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className="focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-              >
-                {ALL_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-              </Select>
-            </div>
-          </div>
-
-          {/* ===== Harga & Ongkir ===== */}
-          <div className="rounded-2xl border border-[#0a2342]/15 p-4 bg-white/50 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <label className="block text-sm text-neutral-700 font-medium">Harga Jastip (base)</label>
-                <p className="text-xs text-neutral-500">
-                  {useAutoJastip ? <>Otomatis: ceil({jumlahKg || 0} kg) × {formatIDR(unitPrice)}</> : <>Manual: masukkan nominal sendiri</>}
-                </p>
-              </div>
-              <label className="inline-flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={useAutoJastip} onChange={(e) => setUseAutoJastip(e.target.checked)} />
-                Gunakan perhitungan otomatis
-              </label>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="lg:col-span-1">
+                <label className="block mb-1 text-sm text-neutral-600">Kategori</label>
+                <Select
+                  value={kategori}
+                  onChange={(e) => setKategori(e.target.value)}
+                  className="focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                >
+                  {['Makanan', 'Minuman', 'Kecantikan', 'Elektronik', 'Lainnya'].map(k => (
+                    <option key={k} value={k}>{k}</option>
+                  ))}
+                </Select>
+              </div>
+
+              <Input
+                label="Tanggal Pemesanan"
+                type="date"
+                value={tanggal}
+                onChange={(e) => setTanggal(e.target.value)}
+                required
+                className="focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+              />
+
+              <SearchableSelect
+                label="Nama Pelanggan"
+                value={namaPelanggan}
+                onChange={setNamaPelanggan}
+                options={customerOptions}
+                disabled={loading}
+              />
+
+              <div>
                 <Input
-                  label="Harga Jastip (base)"
+                  label="Berat (Kg)"
                   type="number"
+                  step="0.01"
                   min={0}
-                  step="1"
-                  value={toStr(hargaJastipManual)}
-                  onChange={(e) => setHargaJastipManual(num(e.target.value))}
-                  className={`focus:ring-2 focus:ring-orange-500 focus:border-orange-500 ${useAutoJastip ? 'opacity-70 cursor-not-allowed' : ''}`}
+                  value={toStr(jumlahKg)}
+                  onChange={(e) => setJumlahKg(num(e.target.value))}
+                  required
+                  className="focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                 />
-                <p className="mt-1 text-xs text-neutral-500">{useAutoJastip ? 'Terkunci (otomatis)' : 'Bisa diubah (manual)'}</p>
+                <p className="mt-1 text-xs text-neutral-500">* Pembulatan ke atas (ceil).</p>
               </div>
 
-              <Input label="Jastip Markup" type="number" min={0} step="1" value={toStr(hargaJastipMarkup)} onChange={(e) => setHargaJastipMarkup(num(e.target.value))} className="focus:ring-2 focus:ring-orange-500 focus:border-orange-500" />
-              <Input label="Harga Ongkir (base)" type="number" min={0} step="1" value={toStr(useAutoJastip ? baseOngkir : hargaOngkir)} disabled={useAutoJastip} onChange={(e) => setHargaOngkir(num(e.target.value))} className="focus:ring-2 focus:ring-orange-500 focus:border-orange-500" />
-              <Input label="Ongkir Markup" type="number" min={0} step="1" value={toStr(hargaOngkirMarkup)} onChange={(e) => setHargaOngkirMarkup(num(e.target.value))} className="focus:ring-2 focus:ring-orange-500 focus:border-orange-500" />
+              <Input
+                label="Lokasi Pengiriman"
+                value={pengiriman}
+                onChange={(e) => setPengiriman(e.target.value)}
+                className="focus:ring-2 focus:ring-orange-500 focus:border-orange-500 lg:col-span-2"
+              />
+
+              <div className="lg:col-span-1">
+                <label className="block mb-1 text-sm text-neutral-600">Status</label>
+                <Select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  className="focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                >
+                  {ALL_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                </Select>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block mb-1 text-sm text-neutral-600">Total Pembayaran</label>
-                <div className="px-3 py-2 rounded-xl border border-[#0a2342]/20 bg-white font-semibold text-[#0a2342]">
-                  {formatIDR(totalPembayaran)}
+            <div className="rounded-2xl border border-[#0a2342]/15 p-4 bg-white/50 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <label className="block text-sm text-neutral-700 font-medium">Harga Jastip (base)</label>
+                  <p className="text-xs text-neutral-500">
+                    {useAutoJastip ? <>Otomatis: ceil({jumlahKg || 0} kg) × {formatIDR(unitPrice)}</> : <>Manual: masukkan nominal sendiri</>}
+                  </p>
                 </div>
+                <label className="inline-flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={useAutoJastip} onChange={(e) => setUseAutoJastip(e.target.checked)} />
+                  Gunakan perhitungan otomatis
+                </label>
               </div>
-              <div>
-                <label className="block mb-1 text-sm text-neutral-600">Total Keuntungan</label>
-                <div className="px-3 py-2 rounded-xl border border-[#0a2342]/20 bg-white font-semibold text-[#0a2342]">
-                  {formatIDR(totalKeuntungan)}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="lg:col-span-1">
+                  <Input
+                    label="Harga Jastip (base)"
+                    type="number"
+                    min={0}
+                    step="1"
+                    value={toStr(hargaJastipManual)}
+                    onChange={(e) => setHargaJastipManual(num(e.target.value))}
+                    className={`focus:ring-2 focus:ring-orange-500 focus:border-orange-500 ${useAutoJastip ? 'opacity-70 cursor-not-allowed' : ''}`}
+                  />
+                  <p className="mt-1 text-xs text-neutral-500">{useAutoJastip ? 'Terkunci (otomatis)' : 'Bisa diubah (manual)'}</p>
                 </div>
+
+                <Input label="Jastip Markup" type="number" min={0} step="1" value={toStr(hargaJastipMarkup)} onChange={(e) => setHargaJastipMarkup(num(e.target.value))} className="focus:ring-2 focus:ring-orange-500 focus:border-orange-500" />
+                <Input label="Harga Ongkir (base)" type="number" min={0} step="1" value={toStr(useAutoJastip ? baseOngkir : hargaOngkir)} disabled={useAutoJastip} onChange={(e) => setHargaOngkir(num(e.target.value))} className="focus:ring-2 focus:ring-orange-500 focus:border-orange-500" />
+                <Input label="Ongkir Markup" type="number" min={0} step="1" value={toStr(hargaOngkirMarkup)} onChange={(e) => setHargaOngkirMarkup(num(e.target.value))} className="focus:ring-2 focus:ring-orange-500 focus:border-orange-500" />
               </div>
-              <div>
-                <label className="block mb-1 text-sm text-neutral-600">Detail Perhitungan</label>
-                <div className="px-3 py-2 rounded-xl border border-[#0a2342]/10 bg-orange-50 text-sm">
-                  ceil({jumlahKg || 0}) = <b>{ceilKg}</b> • Jastip base: <b>{formatIDR(baseOngkir)}</b> • J+M: <b>{formatIDR(Number(hargaJastipMarkup) || 0)}</b> • O+M: <b>{formatIDR((Number(hargaOngkir) || 0) + (Number(hargaOngkirMarkup) || 0))}</b>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block mb-1 text-sm text-neutral-600">Total Pembayaran</label>
+                  <div className="px-3 py-2 rounded-xl border border-[#0a2342]/20 bg-white font-semibold text-[#0a2342]">
+                    {formatIDR(totalPembayaran)}
+                  </div>
+                </div>
+                <div>
+                  <label className="block mb-1 text-sm text-neutral-600">Total Keuntungan</label>
+                  <div className="px-3 py-2 rounded-xl border border-[#0a2342]/20 bg-white font-semibold text-[#0a2342]">
+                    {formatIDR(totalKeuntungan)}
+                  </div>
+                </div>
+                <div>
+                  <label className="block mb-1 text-sm text-neutral-600">Detail Perhitungan</label>
+                  <div className="px-3 py-2 rounded-xl border border-[#0a2342]/10 bg-orange-50 text-sm">
+                    ceil({jumlahKg || 0}) = <b>{ceilKg}</b> • Jastip base: <b>{formatIDR(baseOngkir)}</b> • J+M: <b>{formatIDR(Number(hargaJastipMarkup) || 0)}</b> • O+M: <b>{formatIDR((Number(hargaOngkir) || 0) + (Number(hargaOngkirMarkup) || 0))}</b>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* ===== Catatan ===== */}
-          <div>
-            <label className="block mb-1 text-sm text-neutral-600">Catatan</label>
-            <textarea
-              rows={3}
-              value={catatan}
-              onChange={(e) => setCatatan(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl border border-[#0a2342]/20 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-              placeholder="Catatan khusus (opsional)"
-            />
-          </div>
+            <div>
+              <label className="block mb-1 text-sm text-neutral-600">Catatan</label>
+              <textarea
+                rows={3}
+                value={catatan}
+                onChange={(e) => setCatatan(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-[#0a2342]/20 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                placeholder="Catatan khusus (opsional)"
+              />
+            </div>
+          </fieldset>
         </form>
       </div>
 
-      {/* ===== Aksi ===== */}
       <div className="flex justify-end gap-2">
-        <Button variant="ghost" type="button" onClick={onClose} className="text-[#0a2342] hover:bg-[#0a2342]/5">Batal</Button>
-        <Button type="submit" form="order-form" className="bg-orange-600 hover:bg-orange-700 text-white">Simpan</Button>
+        <Button
+          variant="ghost"
+          type="button"
+          onClick={onClose}
+          disabled={loading}
+          className={`text-[#0a2342] hover:bg-[#0a2342]/5 ${loading ? 'opacity-60 cursor-not-allowed' : ''}`}
+        >
+          Batal
+        </Button>
+
+        <Button
+          type="submit"
+          form="order-form"
+          disabled={loading}
+          className={`bg-orange-600 hover:bg-orange-700 text-white ${loading ? 'opacity-60 cursor-not-allowed' : ''}`}
+        >
+          {loading ? (
+            <span className="inline-flex items-center gap-2">
+              <span className="inline-block w-4 h-4 rounded-full border-2 border-white/70 border-t-transparent animate-spin" />
+              Menyimpan...
+            </span>
+          ) : (
+            'Simpan'
+          )}
+        </Button>
       </div>
     </Modal>
   );

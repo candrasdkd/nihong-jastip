@@ -11,9 +11,25 @@ export function CalculatorCard({
   unitPrice,
   openUnitPrice,
 }: { unitPrice: number; openUnitPrice: () => void; }) {
-  const [kg, setKg] = useState(1);
+  const [kg, setKg] = useState<string>('1');
 
-  const total = useMemo(() => computeTotal(kg, unitPrice), [kg, unitPrice]);
+  const total = useMemo(() => {
+    // Replace comma with a dot for accurate float parsing
+    const normalizedKg = kg.replace(',', '.');
+    const numericKg = parseFloat(normalizedKg) || 0;
+    return computeTotal(numericKg, unitPrice);
+  }, [kg, unitPrice]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { value } = e.target;
+    // Allow only digits, a single comma, and an empty string
+    const sanitizedValue = value.match(/^[0-9,]*$/) ? value : kg;
+    const commaCount = sanitizedValue.split(',').length - 1;
+
+    if (commaCount <= 1) {
+      setKg(sanitizedValue);
+    }
+  };
 
   return (
     <div className="max-w-xl">
@@ -31,7 +47,6 @@ export function CalculatorCard({
             </p>
           </div>
 
-          {/* Ghost NAVY */}
           <Button
             variant="ghost"
             onClick={openUnitPrice}
@@ -44,14 +59,10 @@ export function CalculatorCard({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end mt-4">
           <Input
             label="Berat (Kg)"
-            type="number"
-            step="0.01"
-            min={0}
+            type="text" // Change to text for full control
+            inputMode="decimal" // This suggests the decimal keyboard on mobile
             value={kg}
-            onChange={(e) => {
-              const n = parseFloat((e.target as HTMLInputElement).value);
-              setKg(Number.isFinite(n) ? n : 0);
-            }}
+            onChange={handleInputChange}
             className="focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
           />
 

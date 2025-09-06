@@ -16,6 +16,7 @@ import { BottomTabBar } from './components/BottomTabBar'; // ⬅️ new
 
 // ⬇️ Tambahan import logo
 import logoLight from './assets/nihong.png';
+import { listenCustomers } from './services/customersFirebase';
 
 export default function App() {
   const [tab, setTab] = useState<'dashboard' | 'orders' | 'customers' | 'calculator'>('dashboard');
@@ -23,6 +24,13 @@ export default function App() {
   const [customers, setCustomers] = useLocalStorage<Customer[]>(STORAGE_KEYS.customers, []);
   const [unitPrice, setUnitPrice] = useLocalStorage<number>(STORAGE_KEYS.unitPrice, 100_000);
   const [showUnitPriceModal, setShowUnitPriceModal] = useState(false);
+  useEffect(() => {
+    const unsub = listenCustomers((rows) => {
+      // casting sederhana agar cocok dengan tipe Customer kamu
+      setCustomers(rows as Customer[]);
+    });
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
     if (orders.length === 0 && customers.length === 0) {
@@ -80,10 +88,9 @@ export default function App() {
       {/* Tambah padding bawah agar tidak ketutup bottom tab di mobile */}
       <main className="max-w-7xl mx-auto px-4 py-6 pb-24 sm:pb-0">
         {tab === 'dashboard' && <Dashboard orders={orders} customers={customers} />}
-        {tab === 'orders' && <OrdersPage orders={orders} setOrders={setOrders} customers={customers} unitPrice={unitPrice} />}
-        {tab === 'customers' && <CustomersPage customers={customers} setCustomers={setCustomers} />}
+        {tab === 'orders' && <OrdersPage customers={customers} orders={orders} setOrders={setOrders} unitPrice={unitPrice} />}
+        {tab === 'customers' && <CustomersPage />}
         {tab === 'calculator' && <CalculatorCard unitPrice={unitPrice} openUnitPrice={() => setShowUnitPriceModal(true)} />}
-        <p className="text-xs text-neutral-500 mt-8">*Data disimpan di <span className="font-semibold">localStorage</span>. Untuk produksi, sambungkan ke API/DB.</p>
       </main>
 
       {showUnitPriceModal && (

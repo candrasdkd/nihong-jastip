@@ -22,7 +22,7 @@ function compute(o: ExtendedOrder, unitPrice: number) {
   const jastipMarkup = Number(o.hargaJastipMarkup ?? 0);
   const baseOngkir = Number(o.hargaOngkir ?? 0);
   const ongkirMarkup = Number(o.hargaOngkirMarkup ?? 0);
-  const lineTotal = baseJastip + jastipMarkup + baseOngkir + ongkirMarkup;
+  const lineTotal = baseOngkir;
   const keuntungan = jastipMarkup + ongkirMarkup;
   return { kg, baseJastip, jastipMarkup, baseOngkir, ongkirMarkup, lineTotal, keuntungan };
 }
@@ -221,7 +221,7 @@ export function InvoiceModal({
     doc.setFontSize(9);
     doc.setTextColor(90);
     doc.text(
-      `Tarif saat ini: ${formatIDR(unitPrice)} / kg. Perhitungan berat dibulatkan ke atas (ceil).`,
+      `Tarif saat ini: ${formatIDR(unitPrice)} / kg. Perhitungan dibulatkan ke atas (ceil).`,
       margin,
       afterTotalsY + 10,
     );
@@ -304,7 +304,7 @@ export function InvoiceModal({
               <div>
                 <div className="text-sm text-neutral-500 mb-1">Catatan</div>
                 <div className="text-sm text-neutral-700">
-                  Total dihitung dengan <b>pembulatan ke atas</b> (ceil) per kilogram. Tarif saat ini: {formatIDR(unitPrice)} / kg.
+                  Tarif saat ini: {formatIDR(unitPrice)} / kg. Perhitungan dibulatkan ke atas (ceil).
                   {order.catatan ? (<div className="mt-1 text-neutral-600">Catatan pesanan: {order.catatan}</div>) : null}
                 </div>
               </div>
