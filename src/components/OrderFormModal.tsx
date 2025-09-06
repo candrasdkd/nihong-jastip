@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Customer, Order, OrderStatus } from '../types';
 import { computeTotal, genOrderNo, todayStr } from '../utils/helpers';
 import { Input } from './ui/Input';
@@ -11,6 +11,7 @@ import { Select } from './ui/Select';
 const STATUS_BARU = ['Belum Membayar', 'Pembayaran Selesai', 'Sedang Pengiriman', 'Sudah Diterima'] as const;
 const STATUS_LAMA: OrderStatus[] = ['Pending', 'Diproses', 'Selesai', 'Dibatalkan'];
 const ALL_STATUSES = [...STATUS_BARU, ...STATUS_LAMA] as readonly string[];
+
 type Option = { label: string; value: string };
 const toStr = (v: number) => (Number.isFinite(v) ? String(v) : '');
 const num = (v: any) => {
@@ -18,6 +19,58 @@ const num = (v: any) => {
   return Number.isFinite(n) ? n : 0;
 };
 
+/** ===== Rupiah Input (masking) ===== */
+function RupiahInput({
+  label,
+  value,
+  onChange,
+  disabled,
+  className,
+  placeholder = 'Rp 0',
+}: {
+  label: string;
+  value: number;
+  onChange: (val: number) => void;
+  disabled?: boolean;
+  className?: string;
+  placeholder?: string;
+}) {
+  const fmt = (n: number) => formatIDR(Math.max(0, Math.floor(n || 0)));
+  const [text, setText] = useState<string>(value ? fmt(value) : '');
+
+  // Sinkronisasi ketika prop value berubah dari luar
+  useEffect(() => {
+    setText(value ? fmt(value) : '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value ?? '';
+    const digits = raw.replace(/[^\d]/g, '');
+    if (!digits) {
+      setText('');
+      onChange(0);
+      return;
+    }
+    const n = Number(digits);
+    setText(fmt(n));
+    onChange(n);
+  };
+
+  return (
+    <Input
+      label={label}
+      type="text"
+      value={text}
+      onChange={handleChange}
+      disabled={disabled}
+      placeholder={placeholder}
+      className={className}
+    />
+  );
+}
+
+/** ======= Form ======= */
 export function OrderFormModal({
   customers, initial, onClose, onSubmit, existing, unitPrice,
 }: {
@@ -30,7 +83,6 @@ export function OrderFormModal({
 }) {
   const [loading, setLoading] = useState(false);
 
-  // Use a unique, timestamp-based order number for new orders
   const [no] = useState(initial?.no || `ORD-${new Date().getTime()}`);
   const [namaBarang, setNamaBarang] = useState(initial?.namaBarang || '');
   const [kategori, setKategori] = useState(initial?.kategori || 'Makanan');
@@ -43,29 +95,53 @@ export function OrderFormModal({
 
   const initialHasManualJastip = typeof (initial as any)?.hargaJastip === 'number';
   const [useAutoJastip, setUseAutoJastip] = useState<boolean>(!initialHasManualJastip);
+
+  // Semua harga disimpan tetap sebagai number (tanpa "Rp")
   const [hargaJastipManual, setHargaJastipManual] = useState<number>(Number((initial as any)?.hargaJastipManual ?? 0));
   const [hargaJastipMarkup, setHargaJastipMarkup] = useState<number>(Number((initial as any)?.hargaJastipMarkup ?? 0));
   const [hargaOngkir, setHargaOngkir] = useState<number>((initial as any)?.hargaOngkir ?? computeTotal(jumlahKg, unitPrice));
   const [hargaOngkirMarkup, setHargaOngkirMarkup] = useState<number>(Number((initial as any)?.hargaOngkirMarkup ?? computeTotal(jumlahKg, unitPrice)));
   const [status, setStatus] = useState<string>((initial?.status as any) || 'Belum Membayar');
 
+  // Base ongkir auto/manual
   const baseOngkir = useMemo(
     () => (useAutoJastip ? computeTotal(jumlahKg, unitPrice) : (Number(hargaOngkir) || 0)),
     [useAutoJastip, hargaOngkir, jumlahKg, unitPrice]
   );
+
   const ceilKg = useMemo(() => Math.ceil(Number(jumlahKg || 0)), [jumlahKg]);
+
   const totalPembayaran = useMemo(
     () => (Number(hargaJastipManual) || 0) + (Number(baseOngkir) || 0),
     [hargaJastipManual, baseOngkir]
   );
+
   const totalKeuntungan = useMemo(
-    () => ((Number(hargaJastipMarkup) || 0) + (Number(hargaOngkirMarkup) || 0) - (Number(hargaJastipManual) || 0) - (Number(baseOngkir) || 0)),
-    [hargaJastipMarkup, hargaOngkirMarkup, hargaJastipManual, baseOngkir, jumlahKg, unitPrice]
+    () =>
+      (Number(hargaJastipMarkup) || 0) +
+      (Number(hargaOngkirMarkup) || 0) -
+      (Number(hargaJastipManual) || 0) -
+      (Number(baseOngkir) || 0),
+    [hargaJastipMarkup, hargaOngkirMarkup, hargaJastipManual, baseOngkir]
   );
+
+  // Validasi
+  const profitNegative = useMemo(() => Number.isFinite(totalKeuntungan) && totalKeuntungan < 0, [totalKeuntungan]);
+  const customerEmpty = useMemo(() => !String(namaPelanggan || '').trim(), [namaPelanggan]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (loading) return;
+
+    if (customerEmpty) {
+      alert('Nama Pelanggan wajib diisi.');
+      return;
+    }
+    if (profitNegative) {
+      alert('Total Keuntungan tidak boleh minus. Periksa kembali harga/markup.');
+      return;
+    }
+
     setLoading(true);
     try {
       const payload: any = {
@@ -147,13 +223,18 @@ export function OrderFormModal({
                 className="focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
               />
 
-              <SearchableSelect
-                label="Nama Pelanggan"
-                value={namaPelanggan}
-                onChange={setNamaPelanggan}
-                options={customerOptions}
-                disabled={loading}
-              />
+              <div className="lg:col-span-1">
+                <SearchableSelect
+                  label="Nama Pelanggan *"
+                  value={namaPelanggan}
+                  onChange={setNamaPelanggan}
+                  options={customerOptions}
+                  disabled={loading}
+                />
+                {customerEmpty && (
+                  <p className="mt-1 text-xs text-red-600">Nama pelanggan wajib diisi.</p>
+                )}
+              </div>
 
               <div>
                 <Input
@@ -203,22 +284,35 @@ export function OrderFormModal({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="lg:col-span-1">
-                  <Input
-                    label="Harga Jastip (base)"
-                    type="number"
-                    min={0}
-                    step="1"
-                    value={toStr(hargaJastipManual)}
-                    onChange={(e) => setHargaJastipManual(num(e.target.value))}
-                    className={`focus:ring-2 focus:ring-orange-500 focus:border-orange-500 ${useAutoJastip ? 'opacity-70 cursor-not-allowed' : ''}`}
-                  />
-                  <p className="mt-1 text-xs text-neutral-500">{useAutoJastip ? 'Terkunci (otomatis)' : 'Bisa diubah (manual)'}</p>
-                </div>
-
-                <Input label="Jastip Markup" type="number" min={0} step="1" value={toStr(hargaJastipMarkup)} onChange={(e) => setHargaJastipMarkup(num(e.target.value))} className="focus:ring-2 focus:ring-orange-500 focus:border-orange-500" />
-                <Input label="Harga Ongkir (base)" type="number" min={0} step="1" value={toStr(useAutoJastip ? baseOngkir : hargaOngkir)} disabled={useAutoJastip} onChange={(e) => setHargaOngkir(num(e.target.value))} className="focus:ring-2 focus:ring-orange-500 focus:border-orange-500" />
-                <Input label="Ongkir Markup" type="number" min={0} step="1" value={toStr(hargaOngkirMarkup)} onChange={(e) => setHargaOngkirMarkup(num(e.target.value))} className="focus:ring-2 focus:ring-orange-500 focus:border-orange-500" />
+                {/* Harga Jastip (base) - Rupiah */}
+                <RupiahInput
+                  label="Harga Jastip (base)"
+                  value={hargaJastipManual}
+                  onChange={setHargaJastipManual}
+                  className={`focus:ring-2 focus:ring-orange-500 focus:border-orange-500 ${useAutoJastip ? 'opacity-70 cursor-not-allowed' : ''}`}
+                />
+                {/* Jastip Markup - Rupiah */}
+                <RupiahInput
+                  label="Jastip Markup"
+                  value={hargaJastipMarkup}
+                  onChange={setHargaJastipMarkup}
+                  className="focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                />
+                {/* Harga Ongkir (base) - Rupiah */}
+                <RupiahInput
+                  label="Harga Ongkir (base)"
+                  value={useAutoJastip ? baseOngkir : hargaOngkir}
+                  onChange={setHargaOngkir}
+                  disabled={useAutoJastip}
+                  className="focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                />
+                {/* Ongkir Markup - Rupiah */}
+                <RupiahInput
+                  label="Ongkir Markup"
+                  value={hargaOngkirMarkup}
+                  onChange={setHargaOngkirMarkup}
+                  className="focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -228,12 +322,28 @@ export function OrderFormModal({
                     {formatIDR(totalPembayaran)}
                   </div>
                 </div>
+
                 <div>
                   <label className="block mb-1 text-sm text-neutral-600">Total Keuntungan</label>
-                  <div className="px-3 py-2 rounded-xl border border-[#0a2342]/20 bg-white font-semibold text-[#0a2342]">
+                  <div
+                    className={[
+                      "px-3 py-2 rounded-xl border font-semibold",
+                      profitNegative
+                        ? "border-red-300 bg-red-50 text-red-700"
+                        : "border-[#0a2342]/20 bg-white text-[#0a2342]"
+                    ].join(" ")}
+                    aria-live="polite"
+                    aria-invalid={profitNegative ? true : undefined}
+                  >
                     {formatIDR(totalKeuntungan)}
                   </div>
+                  {profitNegative && (
+                    <p className="mt-1 text-xs text-red-600">
+                      Total Keuntungan negatif. Periksa kembali harga dasar atau markup Anda. Tombol <b>Simpan</b> dinonaktifkan.
+                    </p>
+                  )}
                 </div>
+
                 <div>
                   <label className="block mb-1 text-sm text-neutral-600">Detail Perhitungan</label>
                   <div className="px-3 py-2 rounded-xl border border-[#0a2342]/10 bg-orange-50 text-sm">
@@ -271,8 +381,15 @@ export function OrderFormModal({
         <Button
           type="submit"
           form="order-form"
-          disabled={loading}
-          className={`bg-orange-600 hover:bg-orange-700 text-white ${loading ? 'opacity-60 cursor-not-allowed' : ''}`}
+          disabled={loading || profitNegative || customerEmpty}
+          title={
+            customerEmpty
+              ? 'Nama Pelanggan wajib diisi'
+              : profitNegative
+                ? 'Total Keuntungan minus — perbaiki dulu nilainya'
+                : undefined
+          }
+          className={`bg-orange-600 hover:bg-orange-700 text-white ${loading || profitNegative || customerEmpty ? 'opacity-60 cursor-not-allowed' : ''}`}
         >
           {loading ? (
             <span className="inline-flex items-center gap-2">
