@@ -5,41 +5,72 @@ import { OrdersPage } from './pages/OrdersPage';
 import { CustomersPage } from './pages/CustomersPage';
 import { CalculatorCard } from './pages/CalculatorCard';
 import { Customer, Order } from './types';
-import { STORAGE_KEYS } from './utils/helpers';
-import { useLocalStorage } from './utils/storage';
-import { ensureSeed } from './data/seed';
 import { formatIDR } from './utils/format';
 import { Button } from './components/ui/Button';
 import { TabButton } from './components/ui/TabButton';
 import { UnitPriceModal } from './components/UnitPriceModal';
-import { BottomTabBar } from './components/BottomTabBar'; // ⬅️ new
+import { BottomTabBar } from './components/BottomTabBar';
 
-// ⬇️ Tambahan import logo
+// ⬇️ Logo
 import logoLight from './assets/nihong.png';
+
+// ⬇️ Firestore listeners
 import { listenCustomers } from './services/customersFirebase';
+import { subscribeOrders, toExtended } from './services/ordersFirebase';
+
+// ⬇️ helper tanggal
+function toInputDate(d: Date) {
+  const iso = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString();
+  return iso.slice(0, 10);
+}
+function startOfMonth(d: Date) { return new Date(d.getFullYear(), d.getMonth(), 1); }
+function endOfMonth(d: Date) { return new Date(d.getFullYear(), d.getMonth() + 1, 0); }
 
 export default function App() {
   const [tab, setTab] = useState<'dashboard' | 'orders' | 'customers' | 'calculator'>('dashboard');
-  const [orders, setOrders] = useLocalStorage<Order[]>(STORAGE_KEYS.orders, []);
-  const [customers, setCustomers] = useLocalStorage<Customer[]>(STORAGE_KEYS.customers, []);
-  const [unitPrice, setUnitPrice] = useLocalStorage<number>(STORAGE_KEYS.unitPrice, 100_000);
+
+  // ⬇️ BUKAN localStorage lagi — murni state
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [unitPrice, setUnitPrice] = useState<number>(100_000);
   const [showUnitPriceModal, setShowUnitPriceModal] = useState(false);
+
+  // 🔊 Realtime customers (global, dipakai di Orders + Customers + Dashboard)
   useEffect(() => {
-    const unsub = listenCustomers((rows) => {
-      // casting sederhana agar cocok dengan tipe Customer kamu
-      setCustomers(rows as Customer[]);
-    });
+    const unsub = listenCustomers((rows) => setCustomers(rows as Customer[]));
     return () => unsub();
   }, []);
 
+  // 🔊 Realtime orders khusus saat di Dashboard (biar grafik ada data tanpa harus buka tab Orders)
   useEffect(() => {
-    if (orders.length === 0 && customers.length === 0) {
-      ensureSeed(setOrders, setCustomers, unitPrice);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (tab !== 'dashboard') return;
 
-  useMemo(() => orders.filter((o) => o.status !== 'Selesai' && o.status !== 'Dibatalkan'), [orders]);
+    const now = new Date();
+    const from = (() => {
+      const d = new Date(now);
+      d.setMonth(d.getMonth() - 11, 1); // 12 bulan terakhir (termasuk bulan ini)
+      return startOfMonth(d);
+    })();
+    const to = endOfMonth(now);
+
+    const unsub = subscribeOrders(
+      {
+        fromInput: toInputDate(from),
+        toInput: toInputDate(to),
+        sort: 'desc',
+        limit: 1000, // sesuaikan kebutuhan dashboard
+      },
+      (rows) => setOrders(rows.map(toExtended) as Order[])
+    );
+
+    return () => unsub();
+  }, [tab]);
+
+  // (opsional) hitung aktif buat header kecil dsb — tidak wajib
+  const activeOrders = useMemo(
+    () => orders.filter((o: any) => !['Selesai', 'Dibatalkan', 'Sudah Diterima'].includes(String(o?.status || ''))),
+    [orders]
+  );
 
   return (
     <div className="min-h-screen bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
@@ -88,6 +119,7 @@ export default function App() {
       {/* Tambah padding bawah agar tidak ketutup bottom tab di mobile */}
       <main className="max-w-7xl mx-auto px-4 py-6 pb-24 sm:pb-0">
         {tab === 'dashboard' && <Dashboard orders={orders} customers={customers} />}
+        {/* Saat tab Orders dibuka, komponen OrdersPage yang akan subscribe + push setOrders sesuai filter */}
         {tab === 'orders' && <OrdersPage customers={customers} orders={orders} setOrders={setOrders} unitPrice={unitPrice} />}
         {tab === 'customers' && <CustomersPage />}
         {tab === 'calculator' && <CalculatorCard unitPrice={unitPrice} openUnitPrice={() => setShowUnitPriceModal(true)} />}
@@ -100,7 +132,10 @@ export default function App() {
           onSave={(newPrice, recalc) => {
             setUnitPrice(newPrice);
             if (recalc) {
-              setOrders((prev) => prev.map((o) => ({ ...o, totalHarga: Math.ceil(Math.max(0, o.jumlahKg)) * newPrice })));
+              // hanya ubah tampilan total harga di state lokal (tidak mengubah Firestore)
+              setOrders((prev) =>
+                prev.map((o) => ({ ...o, totalHarga: Math.ceil(Math.max(0, (o as any).jumlahKg)) * newPrice }))
+              );
             }
             setShowUnitPriceModal(false);
           }}
