@@ -123,8 +123,8 @@ export function OrdersPage({
     await deleteOrder(id);
   }
 
-  // ======== UI Filter Popover ========
-  const [openFilter, setOpenFilter] = useState(false);
+  // ======== Filter Modal ========
+  const [showFilter, setShowFilter] = useState(false);
   const filterCount = useMemo(() => {
     let n = 0;
     if (statusFilter) n++;
@@ -133,7 +133,14 @@ export function OrdersPage({
     return n;
   }, [statusFilter, dateFrom, dateTo, defaultFrom, defaultTo]);
 
-  const resetFilters = () => {
+  const handleApplyFilters = (payload: { status: string; from: string; to: string }) => {
+    setStatusFilter(payload.status || '');
+    setDateFrom(payload.from || defaultFrom);
+    setDateTo(payload.to || defaultTo);
+    setShowFilter(false);
+  };
+
+  const handleResetFilters = () => {
     setStatusFilter('');
     setDateFrom(defaultFrom);
     setDateTo(defaultTo);
@@ -152,34 +159,19 @@ export function OrdersPage({
             className="flex-grow min-w-[220px] focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
           />
 
-          {/* Tombol Filter + Popover */}
-          <div className="relative">
-            <Button
-              onClick={() => setOpenFilter(v => !v)}
-              className="bg-white border ring-1 ring-[#0a2342]/10 hover:bg-orange-50 text-[#000]"
-              title="Filter status & tanggal"
-            >
-              Filter
-              {filterCount > 0 && (
-                <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs rounded-full bg-orange-100 text-orange-700 ring-1 ring-orange-200">
-                  {filterCount}
-                </span>
-              )}
-            </Button>
-
-            {openFilter && (
-              <FilterPopover
-                onClose={() => setOpenFilter(false)}
-                statusFilter={statusFilter}
-                setStatusFilter={setStatusFilter}
-                dateFrom={dateFrom}
-                setDateFrom={setDateFrom}
-                dateTo={dateTo}
-                setDateTo={setDateTo}
-                onReset={resetFilters}
-              />
+          <Button
+            variant="ghost"
+            onClick={() => setShowFilter(true)}
+            className="!bg-white !text-[#0a2342] !border !border-[#0a2342]/20 ring-1 ring-[#0a2342]/10 hover:!bg-orange-50 dark:!text-[#0a2342] [&_*]:!text-[#0a2342]"
+            title="Filter status & tanggal"
+          >
+            <span className="!text-[#0a2342]">Filter</span>
+            {filterCount > 0 && (
+              <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs rounded-full bg-orange-100 text-orange-700 ring-1 ring-orange-200">
+                {filterCount}
+              </span>
             )}
-          </div>
+          </Button>
         </div>
 
         {/* Kanan: Actions */}
@@ -347,43 +339,58 @@ export function OrdersPage({
           unitPrice={unitPrice}
         />
       )}
+
+      {showFilter && (
+        <FilterModal
+          initial={{ status: statusFilter, from: dateFrom, to: dateTo }}
+          defaultRange={{ from: defaultFrom, to: defaultTo }}
+          onApply={handleApplyFilters}
+          onReset={() => { handleResetFilters(); setShowFilter(false); }}
+          onClose={() => setShowFilter(false)}
+        />
+      )}
     </div>
   );
 }
 
-/** Popover kompak untuk Status + Range Tanggal */
-function FilterPopover({
-  onClose,
-  statusFilter,
-  setStatusFilter,
-  dateFrom,
-  setDateFrom,
-  dateTo,
-  setDateTo,
+/** Modal responsif untuk Status + Range Tanggal (dengan state lokal & Apply/Cancel) */
+function FilterModal({
+  initial,
+  defaultRange,
+  onApply,
   onReset,
+  onClose,
 }: {
-  onClose: () => void;
-  statusFilter: string | '';
-  setStatusFilter: (v: string) => void;
-  dateFrom: string;
-  setDateFrom: (v: string) => void;
-  dateTo: string;
-  setDateTo: (v: string) => void;
+  initial: { status: string; from: string; to: string };
+  defaultRange: { from: string; to: string };
+  onApply: (payload: { status: string; from: string; to: string }) => void;
   onReset: () => void;
+  onClose: () => void;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
+  const [localStatus, setLocalStatus] = useState<string>(initial.status || '');
+  const [localFrom, setLocalFrom] = useState<string>(initial.from || defaultRange.from);
+  const [localTo, setLocalTo] = useState<string>(initial.to || defaultRange.to);
 
-  // ESC untuk menutup
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  // Lock scroll saat modal open
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  // ESC close
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  // Klik di luar untuk menutup
+  // Klik di luar panel untuk close
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) onClose();
     };
     document.addEventListener('mousedown', onClick);
     return () => document.removeEventListener('mousedown', onClick);
@@ -391,60 +398,71 @@ function FilterPopover({
 
   return (
     <div
-      ref={ref}
+      aria-modal="true"
       role="dialog"
-      aria-label="Filter pesanan"
-      className="absolute z-50 right-0 mt-2 w-[340px] rounded-xl border shadow-lg bg-white ring-1 ring-[#0a2342]/10 p-3"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
     >
-      <div className="mb-2 flex items-center justify-between">
-        <div className="text-sm font-semibold text-[#0a2342]">Filter</div>
-        <button
-          onClick={onClose}
-          className="text-xs text-neutral-500 hover:text-neutral-700"
-          aria-label="Tutup"
-        >
-          ✕
-        </button>
-      </div>
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/40" />
 
-      <div className="space-y-3">
-        <div>
-          <div className="text-xs text-neutral-600 mb-1">Status</div>
-          <Select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter((e.target as HTMLSelectElement).value)}
-            className="w-full focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+      {/* Panel */}
+      <div
+        ref={panelRef}
+        className="relative w-full sm:w-[420px] max-w-full sm:max-w-[90vw] rounded-t-2xl sm:rounded-2xl bg-white shadow-xl ring-1 ring-[#0a2342]/10 p-4 sm:p-5 translate-y-0 sm:translate-y-0"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-base sm:text-lg font-semibold text-[color:var(--navy,#0a2342)]">Filter</div>
+          <button
+            onClick={onClose}
+            className="text-sm text-neutral-500 hover:text-neutral-700"
+            aria-label="Tutup"
           >
-            <option value="">Semua Status</option>
-            {['Belum Membayar', 'Pembayaran Selesai', 'Sedang Pengiriman', 'Sudah Diterima', 'Pending', 'Diproses', 'Selesai', 'Dibatalkan']
-              .map(s => <option key={s} value={s}>{s}</option>)}
-          </Select>
+            ✕
+          </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
+        {/* Body */}
+        <div className="space-y-3">
           <div>
-            <div className="text-xs text-neutral-600 mb-1">Dari</div>
-            <Input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom((e.target as HTMLInputElement).value)}
+            <div className="text-xs text-neutral-600 mb-1">Status</div>
+            <Select
+              value={localStatus}
+              onChange={(e) => setLocalStatus((e.target as HTMLSelectElement).value)}
               className="w-full focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-              aria-label="Tanggal dari"
-            />
+            >
+              <option value="">Semua Status</option>
+              {['Belum Membayar', 'Pembayaran Selesai', 'Sedang Pengiriman', 'Sudah Diterima', 'Pending', 'Diproses', 'Selesai', 'Dibatalkan']
+                .map(s => <option key={s} value={s}>{s}</option>)}
+            </Select>
           </div>
-          <div>
-            <div className="text-xs text-neutral-600 mb-1">Sampai</div>
-            <Input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo((e.target as HTMLInputElement).value)}
-              className="w-full focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-              aria-label="Tanggal sampai"
-            />
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <div className="text-xs text-neutral-600 mb-1">Dari</div>
+              <Input
+                type="date"
+                value={localFrom}
+                onChange={(e) => setLocalFrom((e.target as HTMLInputElement).value)}
+                className="w-full focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                aria-label="Tanggal dari"
+              />
+            </div>
+            <div>
+              <div className="text-xs text-neutral-600 mb-1">Sampai</div>
+              <Input
+                type="date"
+                value={localTo}
+                onChange={(e) => setLocalTo((e.target as HTMLInputElement).value)}
+                className="w-full focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                aria-label="Tanggal sampai"
+              />
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-2 pt-1">
+        {/* Footer */}
+        <div className="mt-4 sm:mt-5 flex items-center justify-between gap-2">
           <Button
             variant="ghost"
             onClick={onReset}
@@ -453,12 +471,21 @@ function FilterPopover({
           >
             Reset
           </Button>
-          <Button
-            onClick={onClose}
-            className="bg-[#0a2342] hover:bg-[#081a31] text-white border border-[#0a2342]/20"
-          >
-            Terapkan
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              onClick={onClose}
+              className="text-[#0a2342] hover:bg-[#0a2342]/5"
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={() => onApply({ status: localStatus, from: localFrom, to: localTo })}
+              className="bg-[#0a2342] hover:bg-[#081a31] text-white border border-[#0a2342]/20"
+            >
+              Terapkan
+            </Button>
+          </div>
         </div>
       </div>
     </div>
