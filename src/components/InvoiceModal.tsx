@@ -116,7 +116,7 @@ export function InvoiceModal({
     doc.text('Status', right, 41, { align: 'right' });
     doc.setTextColor(17);
     doc.setFont('helvetica', 'bold');
-    doc.text("Pembayaran Lunas", right, 47, { align: 'right' });
+    doc.text(order.status, right, 47, { align: 'right' });
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(107);
     doc.text(`Pengiriman: ${order.pengiriman ?? '-'}`, right, 52, { align: 'right' });
@@ -260,7 +260,7 @@ export function InvoiceModal({
               </div>
               <div>
                 <div className="text-sm text-neutral-500 mb-1">Status</div>
-                <div className="font-semibold">Pembayaran Lunas</div>
+                <div className="font-semibold">{order.status}</div>
                 <div className="text-sm text-neutral-500">Pengiriman: {order.pengiriman ?? '-'}</div>
               </div>
             </div>

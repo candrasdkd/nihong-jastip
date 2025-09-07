@@ -186,11 +186,11 @@ export function OrdersPage({
             onClick={() => {
               if (selectedOrders.length === 0) return;
               if (!sameCustomer) { alert('Silakan pilih pesanan dari pelanggan yang sama.'); return; }
-              if (hasUnpaid) { alert('Tidak bisa membuka/membuat invoice untuk pesanan dengan status "Belum Membayar".'); return; }
+              // if (hasUnpaid) { alert('Tidak bisa membuka/membuat invoice untuk pesanan dengan status "Belum Membayar".'); return; }
               setShowInvoice({ show: true, order: selectedOrders[0], itemIds: selectedIds });
             }}
-            disabled={!canCreateInvoice}
-            className={`bg-[#0a2342] hover:bg-[#081a31] text-white border border-[#0a2342]/20 ${!canCreateInvoice ? 'opacity-60 cursor-not-allowed' : ''}`}
+            // disabled={!canCreateInvoice}
+            className={`bg-[#0a2342] hover:bg-[#081a31] text-white border border-[#0a2342]/20`}
           >
             Buat Invoice {selectedIds.length > 0 ? `(${selectedIds.length})` : ''}
           </Button>
