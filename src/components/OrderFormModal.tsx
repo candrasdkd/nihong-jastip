@@ -112,8 +112,8 @@ export function OrderFormModal({
   const ceilKg = useMemo(() => Math.ceil(Number(jumlahKg || 0)), [jumlahKg]);
 
   const totalPembayaran = useMemo(
-    () => (Number(hargaJastipManual) || 0) + (Number(baseOngkir) || 0),
-    [hargaJastipManual, baseOngkir]
+    () => (Number(hargaJastipMarkup) || 0) + (Number(hargaOngkirMarkup) || 0),
+    [hargaJastipMarkup, hargaOngkirMarkup]
   );
 
   const totalKeuntungan = useMemo(

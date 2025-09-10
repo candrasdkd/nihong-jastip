@@ -93,7 +93,7 @@ export function OrdersPage({
     const jastipMarkup = Number(o.hargaJastipMarkup ?? 0);
     const baseJastip = Number(o.hargaJastip ?? 0);
     const ongkirMarkup = Number(o.hargaOngkirMarkup ?? 0);
-    const totalPembayaran = baseJastip + baseOngkir;
+    const totalPembayaran = jastipMarkup + ongkirMarkup;
     const totalKeuntungan = (jastipMarkup + ongkirMarkup) - (baseOngkir + baseJastip);
     return { kg, baseJastip, jastipMarkup, baseOngkir, ongkirMarkup, totalPembayaran, totalKeuntungan };
   }

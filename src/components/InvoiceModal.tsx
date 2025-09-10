@@ -22,7 +22,7 @@ function compute(o: ExtendedOrder, unitPrice: number) {
   const jastipMarkup = Number(o.hargaJastipMarkup ?? 0);
   const baseOngkir = Number(o.hargaOngkir ?? 0);
   const ongkirMarkup = Number(o.hargaOngkirMarkup ?? 0);
-  const lineTotal = baseOngkir;
+  const lineTotal = jastipMarkup + ongkirMarkup;
   const keuntungan = jastipMarkup + ongkirMarkup;
   return { kg, baseJastip, jastipMarkup, baseOngkir, ongkirMarkup, lineTotal, keuntungan };
 }
@@ -220,11 +220,11 @@ export function InvoiceModal({
     // Catatan kecil
     doc.setFontSize(9);
     doc.setTextColor(90);
-    doc.text(
-      `Tarif saat ini: ${formatIDR(unitPrice)} / kg. Perhitungan dibulatkan ke atas (ceil).`,
-      margin,
-      afterTotalsY + 10,
-    );
+    // doc.text(
+    //   `Tarif saat ini: ${formatIDR(unitPrice)} / kg. Perhitungan dibulatkan ke atas (ceil).`,
+    //   margin,
+    //   afterTotalsY + 10,
+    // );
 
     doc.save(`${order.no}_Invoice.pdf`);
   }
@@ -301,13 +301,13 @@ export function InvoiceModal({
 
             {/* Notes + Totals */}
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
+              {/* <div>
                 <div className="text-sm text-neutral-500 mb-1">Catatan</div>
                 <div className="text-sm text-neutral-700">
                   Tarif saat ini: {formatIDR(unitPrice)} / kg. Perhitungan dibulatkan ke atas (ceil).
                   {order.catatan ? (<div className="mt-1 text-neutral-600">Catatan pesanan: {order.catatan}</div>) : null}
                 </div>
-              </div>
+              </div> */}
               <div className="sm:justify-self-end w-full sm:w-80">
                 <div className="flex items-center justify-between py-1">
                   <span className="text-sm text-neutral-600">Subtotal</span>
