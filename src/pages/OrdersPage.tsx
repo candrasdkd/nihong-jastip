@@ -100,23 +100,49 @@ export function OrdersPage({
 
   // 🔄 Subscribe ke Firestore berdasarkan: q, status, dateFrom, dateTo, sort desc
   useEffect(() => {
+    console.log(statusFilter, dateFrom, dateTo);
+
     const unsub = subscribeOrders(
       {
-        q,
-        status: statusFilter || undefined,
-        fromInput: dateFrom || undefined,
-        toInput: dateTo || undefined,
-        limit: 250, // atur sesuai kebutuhan
+        q, // boleh tetap dikirim; kalau service-mu belum pakai, aman diabaikan
+        status: statusFilter || '',
+        fromInput: dateFrom || '',
+        toInput: dateTo || '',
+        limit: 250,
         sort: 'desc',
       },
       (rows) => {
-        setOrders(() => rows.map(toExtended));
+        const ex = rows.map(toExtended);
+        const filtered = q ? ex.filter((o) => matchSearch(o, q)) : ex;
+        console.log('got orders', rows.length, '->', filtered.length);
+
+        setOrders(() => filtered);
+
         // bersihkan pilihan yang sudah tidak ada
-        setSelectedIds(prev => prev.filter(id => rows.some(x => x.id === id)));
+        setSelectedIds((prev) => prev.filter((id) => filtered.some((x) => x.id === id)));
       }
     );
     return () => unsub();
   }, [q, statusFilter, dateFrom, dateTo, setOrders]);
+
+
+  function normalize(v: any) {
+    return String(v ?? '').toLowerCase();
+  }
+
+  function matchSearch(o: ExtendedOrder, q: string) {
+    if (!q) return true;
+    const s = q.trim().toLowerCase();
+    return [
+      o.no,
+      o.tanggal,
+      o.pengiriman,
+      o.namaBarang,
+      o.kategori,
+      o.namaPelanggan,
+      o.catatan,
+    ].some((field) => normalize(field).includes(s));
+  }
 
   async function handleDelete(id: string) {
     if (!confirm('Hapus pesanan ini?')) return;
@@ -300,6 +326,7 @@ export function OrdersPage({
                 <div><div className="text-neutral-500 text-xs">Jastip Markup</div><div>{formatIDR(d.jastipMarkup)}</div></div>
                 <div><div className="text-neutral-500 text-xs">Harga Ongkir</div><div>{formatIDR(d.baseOngkir)}</div></div>
                 <div><div className="text-neutral-500 text-xs">Ongkir Markup</div><div>{formatIDR(d.ongkirMarkup)}</div></div>
+                <div><div className="text-neutral-500 text-xs">Total Keuntungan</div><div>{formatIDR(d.totalKeuntungan)}</div></div>
                 <div className="col-span-2"><div className="text-neutral-500 text-xs">Status</div><div><StatusPill status={String(o.status) || 'Belum Membayar'} /></div></div>
                 <div className="col-span-2"><div className="text-neutral-500 text-xs">Catatan</div><div>{o.catatan ?? '-'}</div></div>
               </div>

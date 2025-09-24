@@ -179,7 +179,7 @@ export function Dashboard({ orders, customers }: { orders: Order[]; customers: C
               >
                 <CartesianGrid stroke={GRID} />
                 <XAxis dataKey="label" tick={{ fill: NAVY }} />
-                {/* Dual axis: kiri untuk count, kanan untuk pendapatan (IDR) */}
+                {/* Dual axis: kiri untuk count, kanan untuk Transaksi (IDR) */}
                 <YAxis yAxisId="left" tick={{ fill: NAVY }} />
                 <YAxis
                   yAxisId="right"
@@ -189,7 +189,7 @@ export function Dashboard({ orders, customers }: { orders: Order[]; customers: C
                   width={80}
                 />
                 <Tooltip
-                  formatter={(v: any, name) => (name === 'Pendapatan' ? formatIDR(v as number) : v)}
+                  formatter={(v: any, name) => (name === 'Transaksi' ? formatIDR(v as number) : v)}
                   contentStyle={{
                     background: '#fff',
                     border: '1px solid rgba(10,35,66,0.15)',
@@ -210,7 +210,7 @@ export function Dashboard({ orders, customers }: { orders: Order[]; customers: C
                 <Bar
                   yAxisId="right"
                   dataKey="total"
-                  name="Pendapatan"
+                  name="Transaksi (Rp)"
                   fill={NAVY}
                   radius={[6, 6, 0, 0]}
                   maxBarSize={22}

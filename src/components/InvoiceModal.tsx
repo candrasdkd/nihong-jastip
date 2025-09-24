@@ -6,6 +6,7 @@ import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import stampImage from '../assets/cap.png';
 import autoTable from 'jspdf-autotable';
+import html2canvas from 'html2canvas';
 
 // Selaras dengan OrdersPage: dukung kolom markup dan ongkir
 export type ExtendedOrder = Order & Partial<{
@@ -25,12 +26,25 @@ function compute(o: ExtendedOrder, unitPrice: number) {
   const baseOngkir = Number(o.hargaOngkir ?? 0);
   const ongkirMarkup = Number(o.hargaOngkirMarkup ?? 0);
 
-  // Subtotal dan total tidak diubah, tetap seperti sebelumnya
-  const lineTotal = jastipMarkup + ongkirMarkup; // menggunakan harga markup langsung
-  const keuntungan = jastipMarkup + ongkirMarkup; // menggunakan harga markup langsung
+  const lineTotal = jastipMarkup + ongkirMarkup;
+  const keuntungan = jastipMarkup + ongkirMarkup;
 
   return { kg, baseJastip, jastipMarkup, baseOngkir, ongkirMarkup, lineTotal, keuntungan };
 }
+
+const STATUS_STYLES: Record<string, string> = {
+  'Selesai': 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
+  'Sudah Diterima': 'bg-sky-50 text-sky-700 ring-1 ring-sky-200',
+  'Diproses': 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
+  'Dibatalkan': 'bg-rose-50 text-rose-700 ring-1 ring-rose-200',
+};
+
+const chip = (label?: string) =>
+  label ? (
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-neutral-100 text-neutral-700 ring-1 ring-neutral-200">
+      {label}
+    </span>
+  ) : null;
 
 export function InvoiceModal({
   order,
@@ -62,23 +76,22 @@ export function InvoiceModal({
     return items.reduce(
       (acc, it) => {
         const d = compute(it, unitPrice);
-        acc.subtotal += d.lineTotal; // subtotal berdasarkan markup langsung
-        acc.totalKeuntungan += d.keuntungan; // keuntungan berdasarkan markup langsung
+        acc.subtotal += d.lineTotal;
+        acc.totalKeuntungan += d.keuntungan;
         return acc;
       },
       { subtotal: 0, totalKeuntungan: 0 }
     );
   }, [items, unitPrice]);
 
-  // Catatan harga (hanya markup yang dibagi dengan kg)
   const priceNotes = useMemo(() => {
     if (!items?.length) return '';
     return items
       .map((it) => {
         const d = compute(it, unitPrice);
         const parts = [
-          d.jastipMarkup ? `Jastip Markup / kg ${formatIDR(d.jastipMarkup / d.kg)}` : '',
-          d.ongkirMarkup ? `Ongkir Markup / kg ${formatIDR(d.ongkirMarkup / d.kg)}` : '',
+          d.jastipMarkup ? `Jastip / kg ${formatIDR(d.jastipMarkup / d.kg)}` : '',
+          d.ongkirMarkup ? `Ongkir / kg ${formatIDR(d.ongkirMarkup / d.kg)}` : '',
         ].filter(Boolean).join(' + ');
         return `${it.namaBarang || '-'}: ${parts || '-'}`;
       })
@@ -89,290 +102,227 @@ export function InvoiceModal({
   const grandTotal = totals.subtotal + adminFee;
 
   async function downloadPDF() {
-    const doc = new jsPDF('p', 'mm', 'a4');
-    const margin = 14;
-    const pageW = doc.internal.pageSize.getWidth();
-    const right = pageW - margin;
+    const node = invoiceRef.current;
+    if (!node) return;
 
-    // ==== Header ====
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
-    doc.setTextColor(10, 35, 66);
-    doc.text('INVOICE', margin, 16);
+    // Pastikan state/UI sudah render
+    await new Promise(r => setTimeout(r, 0));
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.setTextColor(17);
-    doc.text(`Tanggal: ${order.tanggal}`, margin, 24);
-
-    // Info perusahaan kanan
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(10, 35, 66);
-    doc.text('Nihong Jastip', right, 16, { align: 'right' });
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(60);
-    doc.text('Depok/Jakarta/Kendal', right, 22, { align: 'right' });
-    doc.text('jastipnihong@gmail.com • 085156775933', right, 27, { align: 'right' });
-
-    // Garis tipis
-    doc.setDrawColor(225);
-    doc.line(margin, 34, right, 34);
-
-    // Ditagihkan kepada
-    doc.setFontSize(10);
-    doc.setTextColor(107);
-    doc.text('Ditagihkan kepada', margin, 41);
-    doc.setTextColor(17);
-    doc.setFont('helvetica', 'bold');
-    doc.text(order.namaPelanggan || '-', margin, 47);
-    doc.setFont('helvetica', 'normal');
-    if (customer?.telpon) doc.text(String(customer.telpon), margin, 52);
-
-    // Status kanan
-    doc.setTextColor(107);
-    doc.text('Status', right, 41, { align: 'right' });
-    doc.setTextColor(17);
-    doc.setFont('helvetica', 'bold');
-    doc.text(order.status || '-', right, 47, { align: 'right' });
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(107);
-    doc.text(`Pengiriman: ${order.pengiriman ?? '-'}`, right, 52, { align: 'right' });
-
-    // ==== Tabel Items (MARKUP) ====
-    const head = [['Nama Barang', 'Kategori', 'Kg', 'Subtotal (Markup)']];
-    const body = items.map((it) => {
-      const d = compute(it, unitPrice);
-      return [
-        it.namaBarang || '-',
-        it.kategori || '-',
-        String(d.kg),
-        formatIDR(d.lineTotal), // subtotal (markup) tetap seperti sebelumnya
-      ];
+    // Render DOM -> Canvas (pakai scale tinggi biar tajam)
+    const canvas = await html2canvas(node, {
+      scale: Math.min(2, window.devicePixelRatio || 1.5), // kualitas cukup tinggi
+      useCORS: true,              // biar <img> lokal/remote bisa ikut
+      backgroundColor: '#ffffff', // pastikan putih
+      logging: false,
+      windowWidth: node.scrollWidth,
+      windowHeight: node.scrollHeight,
     });
 
-    autoTable(doc, {
-      head,
-      body,
-      startY: 58,
-      margin: { left: margin, right: margin },
-      theme: 'grid',
-      styles: {
-        font: 'helvetica',
-        fontSize: 10,
-        cellPadding: 3,
-        lineWidth: 0.1,
-        lineColor: [229, 231, 235],
-      },
-      headStyles: {
-        fillColor: [10, 35, 66],
-        textColor: 255,
-        halign: 'left',
-      },
-      columnStyles: {
-        0: { cellWidth: 80 },
-        1: { cellWidth: 45 },
-        2: { halign: 'right', cellWidth: 20 },
-        3: { halign: 'right', cellWidth: 35 },
-      },
-      didParseCell: (data) => {
-        if (data.section === 'body' && (data.column.index === 2 || data.column.index === 3)) {
-          data.cell.styles.fontStyle = 'normal';
-        }
-      },
-    });
+    const pdf = new jsPDF('p', 'mm', 'a4');
 
-    const afterItemsY = (doc as any).lastAutoTable.finalY || 58;
+    // A4: 210 x 297 mm
+    const margin = 8; // mm — sedikit lebih kecil dari sebelumnya biar muat
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const printableWidth = pageWidth - margin * 2;
+    const printableHeight = pageHeight - margin * 2;
 
-    // ==== Totals (kanan) ====
-    const totalsTableWidth = 70; // mm
-    autoTable(doc, {
-      body: [
-        ['Subtotal (Markup)', formatIDR(totals.subtotal)],
-        ['Biaya Admin', formatIDR(0)],
-        [
-          { content: 'Total', styles: { fontStyle: 'bold', textColor: [10, 35, 66] } },
-          { content: formatIDR(grandTotal), styles: { fontStyle: 'bold', textColor: [10, 35, 66] } },
-        ],
-      ],
-      theme: 'grid',
-      startY: afterItemsY + 6,
-      tableWidth: totalsTableWidth,
-      margin: { left: pageW - margin - totalsTableWidth, right: margin },
-      styles: {
-        font: 'helvetica',
-        fontSize: 10,
-        cellPadding: 3,
-        lineWidth: 0.1,
-        lineColor: [229, 231, 235],
-        halign: 'right',
-      },
-      columnStyles: {
-        0: { halign: 'left' },
-        1: { halign: 'right' },
-      },
-    });
+    // Hitung skala canvas -> mm
+    const imgWidthMM = printableWidth;
+    const pxPerMM = canvas.width / imgWidthMM;
+    const pageCanvasHeightPX = Math.floor(printableHeight * pxPerMM);
 
-    let afterTotalsY = (doc as any).lastAutoTable.finalY || (afterItemsY + 6);
+    let y = 0;
+    let pageIndex = 0;
 
-    // ==== Cap (opsional) ====
-    try {
-      const capDataUrl = await (async (src: string) => {
-        const res = await fetch(src);
-        const blob = await res.blob();
-        return await new Promise<string>((resolve) => {
-          const fr = new FileReader();
-          fr.onload = () => resolve(fr.result as string);
-          fr.readAsDataURL(blob);
-        });
-      })(stampImage as unknown as string);
+    // Helper: crop per halaman agar tidak “nyeret” gambar panjang
+    while (y < canvas.height) {
+      // Buat sub-canvas setinggi 1 halaman
+      const pageCanvas = document.createElement('canvas');
+      const pageCtx = pageCanvas.getContext('2d');
+      const sliceHeight = Math.min(pageCanvasHeightPX, canvas.height - y);
 
-      const size = 28; // mm
-      const x = pageW - margin - size;
-      const y = afterTotalsY + 8;
-      doc.addImage(capDataUrl, 'PNG', x, y, size, size);
-      afterTotalsY = y + size;
-    } catch {
-      // skip jika gagal
+      pageCanvas.width = canvas.width;
+      pageCanvas.height = sliceHeight;
+
+      if (pageCtx) {
+        pageCtx.fillStyle = '#ffffff';
+        pageCtx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+        pageCtx.drawImage(
+          canvas,
+          0, y, canvas.width, sliceHeight,    // sumber (crop)
+          0, 0, canvas.width, sliceHeight     // tujuan
+        );
+      }
+
+      const imgData = pageCanvas.toDataURL('image/png');
+
+      if (pageIndex > 0) pdf.addPage();
+      pdf.addImage(
+        imgData,
+        'PNG',
+        margin,
+        margin,
+        imgWidthMM,
+        (sliceHeight / pxPerMM) // tinggi mm sesuai potongan
+      );
+
+      y += sliceHeight;
+      pageIndex++;
     }
 
-    // ==== Catatan harga ====
-    doc.setFontSize(9);
-    doc.setTextColor(90);
-    const noteTitleY = afterTotalsY + 10;
-    doc.text('Catatan harga: Subtotal dihitung dari Jastip Markup + Ongkir Markup per item (tidak dibagi dengan kg).', margin, noteTitleY);
-
-    if (priceNotes) {
-      const noteLines = doc.splitTextToSize(priceNotes, right - margin);
-      doc.text(noteLines, margin, noteTitleY + 6);
-    }
-
-    doc.save(`${(order as any).no || order.id || 'invoice'}_Invoice.pdf`);
+    const fileName = `${(order as any).no || order.id || 'invoice'}_Invoice.pdf`;
+    pdf.save(fileName);
   }
+
+  const statusClass = STATUS_STYLES[order.status || ''] ?? 'bg-neutral-100 text-neutral-700 ring-1 ring-neutral-200';
 
   return (
     <Modal onClose={onClose} title={`Invoice`} size="5xl" contentClassName="p-0">
       <div className="flex flex-col lg:flex-row gap-4">
-        <div className="flex-1 min-w-0 overflow-auto">
-          {/* ======= INVOICE BODY ======= */}
-          <div ref={invoiceRef} className="invoice-sheet w-[794px] mx-auto bg-white text-neutral-900 p-6 rounded-xl border border-[#0a2342]/10">
-            {/* Header */}
-            <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          {/* ======= INVOICE SHEET ======= */}
+          <div
+            ref={invoiceRef}
+            className="invoice-sheet w-[794px] mx-auto bg-white text-neutral-900 p-0 rounded-2xl ring-1 ring-black/5 shadow-sm overflow-hidden"
+          >
+            {/* Gradient Header */}
+            <div className="bg-gradient-to-r from-[#0a2342] to-[#081a31] text-white px-6 py-5 flex items-start justify-between">
               <div>
-                <h3 className="text-xl font-bold text-[color:var(--navy,#0a2342)]">INVOICE</h3>
-                <p className="text-sm text-neutral-500">Tanggal: {order.tanggal}</p>
+                <div className="text-xs/5 opacity-80">INVOICE</div>
+                <h3 className="text-xl font-bold tracking-wide">Nihong Jastip</h3>
+                <div className="text-[13px] opacity-85">Depok/Jakarta/Kendal</div>
+                <div className="text-[13px] opacity-85">jastipnihong@gmail.com • 085156775933</div>
               </div>
               <div className="text-right">
-                <div className="font-semibold text-[color:var(--navy,#0a2342)]">Nihong Jastip</div>
-                <div className="text-sm text-neutral-600">Depok/Jakarta/Kendal</div>
-                <div className="text-sm text-neutral-600">jastipnihong@gmail.com • 085156775933</div>
+                <div className="text-sm opacity-80">Tanggal</div>
+                <div className="font-semibold tabular-nums">{order.tanggal}</div>
+                {(order as any).no || order.id ? (
+                  <>
+                    <div className="mt-2 text-sm opacity-80">No. Invoice</div>
+                    <div className="font-semibold">{(order as any).no || order.id}</div>
+                  </>
+                ) : null}
               </div>
             </div>
 
-            <div className="border-t border-[#0a2342]/10 my-3" />
-
-            {/* Bill to + status */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="sm:col-span-2">
-                <div className="text-sm text-neutral-500 mb-1">Ditagihkan kepada</div>
-                <div className="font-semibold">{order.namaPelanggan}</div>
-                <div className="text-sm text-neutral-700">{customer?.telpon || ''}</div>
+            {/* Bill to + Status */}
+            <div className="px-6 pt-5 pb-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="sm:col-span-2 rounded-xl ring-1 ring-neutral-200 bg-neutral-50 p-4">
+                <div className="text-xs text-neutral-500 mb-1">Ditagihkan kepada</div>
+                <div className="font-semibold text-neutral-900">{order.namaPelanggan || '-'}</div>
+                {customer?.telpon ? <div className="text-sm text-neutral-700">{customer.telpon}</div> : null}
               </div>
-              <div>
-                <div className="text-sm text-neutral-500 mb-1">Status</div>
-                <div className="font-semibold">{order.status}</div>
-                <div className="text-sm text-neutral-500">Pengiriman: {order.pengiriman ?? '-'}</div>
+              <div className="rounded-xl ring-1 ring-neutral-200 bg-neutral-50 p-4">
+                <div className="text-xs text-neutral-500 mb-2">Status</div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusClass}`}>
+                    {order.status || '-'}
+                  </span>
+                  {chip(order.pengiriman ? `Pengiriman: ${order.pengiriman}` : undefined)}
+                </div>
               </div>
             </div>
 
             {/* Items table */}
-            <div className="mt-4 overflow-x-auto">
-              <table className="table-a4 table-fixed w-full text-sm">
-                <colgroup>
-                  <col style={{ width: '44%' }} /> {/* Nama Barang */}
-                  <col style={{ width: '26%' }} /> {/* Kategori */}
-                  <col style={{ width: '10%' }} /> {/* Kg */}
-                  <col style={{ width: '20%' }} /> {/* Subtotal (Markup) */}
-                </colgroup>
-                <thead>
-                  <tr className="bg-[#0a2342] text-white">
-                    <th className="tcell text-left font-semibold">Nama Barang</th>
-                    <th className="tcell text-left font-semibold">Kategori</th>
-                    <th className="tcell text-right font-semibold">Kg</th>
-                    <th className="tcell text-right font-semibold">Subtotal (Markup)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((it) => {
-                    const d = compute(it, unitPrice);
-                    return (
-                      <tr key={it.id} className="odd:bg-white even:bg-orange-50">
-                        <td className="tcell">{it.namaBarang}</td>
-                        <td className="tcell">{it.kategori}</td>
-                        <td className="tcell text-right align-nums whitespace-nowrap">{d.kg}</td>
-                        <td className="tcell text-right align-nums whitespace-nowrap">
-                          {formatIDR(d.lineTotal)}{/* jastipMarkup + ongkirMarkup */}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="px-6 pb-2 mt-2">
+              <div className="overflow-hidden rounded-xl ring-1 ring-neutral-200">
+                <table className="w-full text-sm">
+                  <colgroup>
+                    <col style={{ width: '44%' }} />
+                    <col style={{ width: '26%' }} />
+                    <col style={{ width: '10%' }} />
+                    <col style={{ width: '20%' }} />
+                  </colgroup>
+                  <thead>
+                    <tr className="bg-[#0a2342] text-white">
+                      <th className="px-3.5 py-2.5 text-left font-semibold">Nama Barang</th>
+                      <th className="px-3.5 py-2.5 text-left font-semibold">Kategori</th>
+                      <th className="px-3.5 py-2.5 text-right font-semibold tabular-nums">Kg</th>
+                      <th className="px-3.5 py-2.5 text-right font-semibold tabular-nums">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-100">
+                    {items.map((it, idx) => {
+                      const d = compute(it, unitPrice);
+                      return (
+                        <tr key={it.id} className={idx % 2 ? 'bg-orange-50/40' : 'bg-white'}>
+                          <td className="px-3.5 py-2.5">{it.namaBarang || '-'}</td>
+                          <td className="px-3.5 py-2.5 text-neutral-700">{it.kategori || '-'}</td>
+                          <td className="px-3.5 py-2.5 text-right tabular-nums">{d.kg}</td>
+                          <td className="px-3.5 py-2.5 text-right tabular-nums font-medium">{formatIDR(d.lineTotal)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             {/* Notes + Totals */}
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="px-6 py-5 grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
                 <div className="text-sm text-neutral-500 mb-1">Catatan</div>
-                <div className="text-sm text-neutral-700">
-                  Subtotal dihitung dari <b>Jastip Markup + Ongkir Markup</b> per item (tidak dibagi dengan kg).
-                  {order.catatan ? (<div className="mt-1 text-neutral-600">Catatan pesanan: {order.catatan}</div>) : null}
+                <div className="rounded-xl ring-1 ring-neutral-200 bg-neutral-50 p-4">
+                  <div className="text-sm text-neutral-700">
+                    Total sudah termasuk biaya admin.
+                    {order.catatan ? (<div className="mt-1 text-neutral-600">Catatan pesanan: {order.catatan}</div>) : null}
+                  </div>
                   {priceNotes ? (
-                    <div className="mt-2 text-xs text-neutral-500 whitespace-pre-line">
+                    <div className="mt-3 text-xs text-neutral-500 whitespace-pre-line leading-5">
                       {priceNotes}
                     </div>
                   ) : null}
                 </div>
               </div>
+
               <div className="sm:justify-self-end w-full sm:w-80">
-                <div className="flex items-center justify-between py-1">
-                  <span className="text-sm text-neutral-600">Subtotal (Markup)</span>
-                  <span className="font-medium">{formatIDR(totals.subtotal)}</span>
-                </div>
-                <div className="flex items-center justify-between py-1">
-                  <span className="text-sm text-neutral-600">Biaya Admin</span>
-                  <span className="font-medium">{formatIDR(adminFee)}</span>
-                </div>
-                <div className="border-t border-[#0a2342]/10 my-1" />
-                <div className="flex items-center justify-between py-1">
-                  <span className="font-semibold text-[color:var(--navy,#0a2342)]">Total</span>
-                  <span className="font-bold text-[color:var(--navy,#0a2342)]">{formatIDR(grandTotal)}</span>
+                <div className="rounded-xl ring-1 ring-neutral-200 bg-gradient-to-br from-neutral-50 to-neutral-100 p-4">
+                  <div className="flex items-center justify-between py-1">
+                    <span className="text-sm text-neutral-600">Total</span>
+                    <span className="font-medium tabular-nums">{formatIDR(totals.subtotal)}</span>
+                  </div>
+                  <div className="flex items-center justify-between py-1">
+                    <span className="text-sm text-neutral-600">Biaya Admin</span>
+                    <span className="font-medium tabular-nums">{formatIDR(adminFee)}</span>
+                  </div>
+                  <div className="border-t border-neutral-200 my-2" />
+                  <div className="flex items-center justify-between py-1">
+                    <span className="font-semibold text-[color:var(--navy,#0a2342)]">Total</span>
+                    <span className="font-bold text-[color:var(--navy,#0a2342)] tabular-nums">{formatIDR(grandTotal)}</span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Stamp only (paraf dihilangkan) */}
-            <div className="mt-10 flex justify-end">
+            {/* Stamp */}
+            <div className="px-6 pb-8 flex justify-end">
               <div className="text-center">
-                <div className="text-sm mb-2">Cap/Stempel</div>
-                <div className="h-28 w-28 mx-auto rounded-full border border-dashed border-[#0a2342]/30 grid place-items-center bg-white">
+                <div className="text-sm mb-2 text-neutral-600">Cap/Stempel</div>
+                <div className="h-28 w-28 mx-auto rounded-full border border-dashed border-[#0a2342]/30 grid place-items-center bg-white hover:shadow-sm transition">
                   <img src={stampImage} alt="Stempel" className="stamp max-h-24 max-w-24 object-contain" />
                 </div>
-                <div className="mt-2 text-sm">Nihong Jastip</div>
+                <div className="mt-2 text-sm font-medium text-neutral-800">Nihong Jastip</div>
               </div>
             </div>
           </div>
         </div>
 
         {/* Sidebar actions */}
-        <div className="w-full lg:w-72 space-y-3">
-          <div className="flex flex-col gap-2">
-            <Button onClick={downloadPDF} className="bg-orange-600 hover:bg-orange-700 text-white">Download PDF</Button>
-            <Button variant="ghost" onClick={onClose}>Tutup</Button>
+        <div className="w-full lg:w-72">
+          <div className="sticky top-4 space-y-3 rounded-2xl ring-1 ring-neutral-200 bg-white p-4 shadow-sm">
+            <Button onClick={downloadPDF} className="w-full bg-orange-600 hover:bg-orange-700 text-white">
+              Download PDF
+            </Button>
+            <Button variant="ghost" onClick={onClose} className="w-full">
+              Tutup
+            </Button>
+            <div className="text-xs text-neutral-500">
+              File A4, lebar 794px. Warna utama navy <span className="font-mono">#0a2342</span> & aksen oranye.
+            </div>
           </div>
         </div>
       </div>
     </Modal>
   );
 }
-
-
