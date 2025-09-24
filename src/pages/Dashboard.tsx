@@ -12,7 +12,7 @@ const NAVY = '#0a2342';
 const NAVY_DARK = '#081a31';
 const GRID = 'rgba(10,35,66,0.08)';
 
-type MonthPoint = { key: string; label: string; total: number; count: number };
+type MonthPoint = { key: string; label: string; total: number; count: number; profit: number; };
 
 const DONE_SET = new Set(['Selesai', 'Sudah Diterima', 'Dibatalkan']);
 
@@ -20,6 +20,11 @@ const DONE_SET = new Set(['Selesai', 'Sudah Diterima', 'Dibatalkan']);
 function getOrderRevenue(o: any): number {
   // Prioritas: totalPembayaran → totalHarga → 0
   const v = Number(o?.totalPembayaran ?? o?.totalHarga ?? 0);
+  return Number.isFinite(v) ? v : 0;
+}
+
+function getOrderProfit(o: any): number {
+  const v = Number(o?.totalKeuntungan ?? o?.profit ?? 0);
   return Number.isFinite(v) ? v : 0;
 }
 
@@ -62,11 +67,12 @@ export function Dashboard({ orders, customers }: { orders: Order[]; customers: C
       const rev = getOrderRevenue(o);
       if (!monthMap.has(k)) {
         const { y, mIdx } = keyToYM(k);
-        monthMap.set(k, { key: k, label: monthLabel(y, mIdx), total: 0, count: 0 });
+        monthMap.set(k, { key: k, label: monthLabel(y, mIdx), total: 0, count: 0, profit: 0 });
         keys.push(k);
       }
       const pt = monthMap.get(k)!;
       pt.total += rev;
+      pt.profit += getOrderProfit(o);
       pt.count += 1;
     }
 
@@ -88,7 +94,7 @@ export function Dashboard({ orders, customers }: { orders: Order[]; customers: C
     while (true) {
       const k = `${y}-${String(mIdx + 1).padStart(2, '0')}`;
       const label = monthLabel(y, mIdx);
-      const base = monthMap.get(k) ?? { key: k, label, total: 0, count: 0 };
+      const base = monthMap.get(k) ?? { key: k, label, total: 0, count: 0, profit: 0 };
       // pastikan label konsisten (kalau base dari map pun aman)
       base.label = label;
       series.push(base);
@@ -109,6 +115,11 @@ export function Dashboard({ orders, customers }: { orders: Order[]; customers: C
     () => monthlyData.reduce((s, m) => s + m.total, 0),
     [monthlyData]
   );
+
+  const totalProfit = useMemo(
+    () => monthlyData.reduce((s, m) => s + m.profit, 0),
+    [monthlyData]
+  );
   const totalCount = useMemo(
     () => monthlyData.reduce((s, m) => s + m.count, 0),
     [monthlyData]
@@ -127,9 +138,15 @@ export function Dashboard({ orders, customers }: { orders: Order[]; customers: C
           <p className="text-3xl font-bold mt-1 text-[color:var(--navy,#0a2342)]">{customers.length}</p>
         </Card>
         <Card className="p-5 bg-white border border-[#0a2342]/10">
-          <p className="text-sm text-neutral-500">Pendapatan (periode)</p>
+          <p className="text-sm text-neutral-500">Jumlah Transaksi</p>
           <p className="text-3xl font-bold mt-1 text-[color:var(--navy,#0a2342)]">
             {formatIDR(totalRevenue)}
+          </p>
+        </Card>
+        <Card className="p-5 bg-white border border-[#0a2342]/10">
+          <p className="text-sm text-neutral-500">Total Keuntungan</p>
+          <p className="text-3xl font-bold mt-1 text-[color:var(--navy,#0a2342)]">
+            {formatIDR(totalProfit)}
           </p>
         </Card>
         <Card className="p-5 bg-white border border-[#0a2342]/10">

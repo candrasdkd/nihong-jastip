@@ -6,6 +6,7 @@ import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import stampImage from '../assets/cap.png';
 import autoTable from 'jspdf-autotable';
+
 // Selaras dengan OrdersPage: dukung kolom markup dan ongkir
 export type ExtendedOrder = Order & Partial<{
   pengiriman: string;
@@ -14,6 +15,7 @@ export type ExtendedOrder = Order & Partial<{
   hargaJastipMarkup: number;
   hargaOngkir: number;
   hargaOngkirMarkup: number;
+  jumlahKg: number | string;
 }>;
 
 function compute(o: ExtendedOrder, unitPrice: number) {
@@ -22,8 +24,11 @@ function compute(o: ExtendedOrder, unitPrice: number) {
   const jastipMarkup = Number(o.hargaJastipMarkup ?? 0);
   const baseOngkir = Number(o.hargaOngkir ?? 0);
   const ongkirMarkup = Number(o.hargaOngkirMarkup ?? 0);
-  const lineTotal = jastipMarkup + ongkirMarkup;
-  const keuntungan = jastipMarkup + ongkirMarkup;
+
+  // Subtotal dan total tidak diubah, tetap seperti sebelumnya
+  const lineTotal = jastipMarkup + ongkirMarkup; // menggunakan harga markup langsung
+  const keuntungan = jastipMarkup + ongkirMarkup; // menggunakan harga markup langsung
+
   return { kg, baseJastip, jastipMarkup, baseOngkir, ongkirMarkup, lineTotal, keuntungan };
 }
 
@@ -44,14 +49,12 @@ export function InvoiceModal({
 }) {
   const invoiceRef = useRef<HTMLDivElement>(null);
 
-  // Item lain dengan nama pelanggan yang sama
   const items = useMemo(() => {
     const pool = orders || [];
     if (itemIds && itemIds.length) {
       const set = new Set(itemIds);
       return pool.filter(o => set.has(o.id));
     }
-    // fallback: semua order milik pelanggan yang sama
     return pool.filter(o => o.namaPelanggan === order.namaPelanggan);
   }, [orders, itemIds, order.namaPelanggan]);
 
@@ -59,12 +62,27 @@ export function InvoiceModal({
     return items.reduce(
       (acc, it) => {
         const d = compute(it, unitPrice);
-        acc.subtotal += d.lineTotal;
-        acc.totalKeuntungan += d.keuntungan;
+        acc.subtotal += d.lineTotal; // subtotal berdasarkan markup langsung
+        acc.totalKeuntungan += d.keuntungan; // keuntungan berdasarkan markup langsung
         return acc;
       },
       { subtotal: 0, totalKeuntungan: 0 }
     );
+  }, [items, unitPrice]);
+
+  // Catatan harga (hanya markup yang dibagi dengan kg)
+  const priceNotes = useMemo(() => {
+    if (!items?.length) return '';
+    return items
+      .map((it) => {
+        const d = compute(it, unitPrice);
+        const parts = [
+          d.jastipMarkup ? `Jastip Markup / kg ${formatIDR(d.jastipMarkup / d.kg)}` : '',
+          d.ongkirMarkup ? `Ongkir Markup / kg ${formatIDR(d.ongkirMarkup / d.kg)}` : '',
+        ].filter(Boolean).join(' + ');
+        return `${it.namaBarang || '-'}: ${parts || '-'}`;
+      })
+      .join('\n');
   }, [items, unitPrice]);
 
   const adminFee = 0;
@@ -79,14 +97,13 @@ export function InvoiceModal({
     // ==== Header ====
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(16);
-    doc.setTextColor(10, 35, 66); // NAVY
+    doc.setTextColor(10, 35, 66);
     doc.text('INVOICE', margin, 16);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
     doc.setTextColor(17);
     doc.text(`Tanggal: ${order.tanggal}`, margin, 24);
-    // doc.text(`No: ${order.no}`, margin, 29);
 
     // Info perusahaan kanan
     doc.setFont('helvetica', 'bold');
@@ -116,20 +133,20 @@ export function InvoiceModal({
     doc.text('Status', right, 41, { align: 'right' });
     doc.setTextColor(17);
     doc.setFont('helvetica', 'bold');
-    doc.text(order.status, right, 47, { align: 'right' });
+    doc.text(order.status || '-', right, 47, { align: 'right' });
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(107);
     doc.text(`Pengiriman: ${order.pengiriman ?? '-'}`, right, 52, { align: 'right' });
 
-    // ==== Tabel Items (vektor, rapi) ====
-    const head = [['Nama Barang', 'Kategori', 'Kg', 'Subtotal']];
+    // ==== Tabel Items (MARKUP) ====
+    const head = [['Nama Barang', 'Kategori', 'Kg', 'Subtotal (Markup)']];
     const body = items.map((it) => {
       const d = compute(it, unitPrice);
       return [
         it.namaBarang || '-',
         it.kategori || '-',
         String(d.kg),
-        formatIDR(d.lineTotal),
+        formatIDR(d.lineTotal), // subtotal (markup) tetap seperti sebelumnya
       ];
     });
 
@@ -144,21 +161,20 @@ export function InvoiceModal({
         fontSize: 10,
         cellPadding: 3,
         lineWidth: 0.1,
-        lineColor: [229, 231, 235], // #e5e7eb
+        lineColor: [229, 231, 235],
       },
       headStyles: {
-        fillColor: [10, 35, 66], // NAVY
+        fillColor: [10, 35, 66],
         textColor: 255,
         halign: 'left',
       },
       columnStyles: {
-        0: { cellWidth: 80 }, // Nama
-        1: { cellWidth: 45 }, // Kategori
+        0: { cellWidth: 80 },
+        1: { cellWidth: 45 },
         2: { halign: 'right', cellWidth: 20 },
         3: { halign: 'right', cellWidth: 35 },
       },
       didParseCell: (data) => {
-        // angka tabular supaya lurus
         if (data.section === 'body' && (data.column.index === 2 || data.column.index === 3)) {
           data.cell.styles.fontStyle = 'normal';
         }
@@ -167,13 +183,16 @@ export function InvoiceModal({
 
     const afterItemsY = (doc as any).lastAutoTable.finalY || 58;
 
-    // ==== Totals (rapi kanan) ====
+    // ==== Totals (kanan) ====
     const totalsTableWidth = 70; // mm
     autoTable(doc, {
       body: [
-        ['Subtotal', formatIDR(totals.subtotal)],
+        ['Subtotal (Markup)', formatIDR(totals.subtotal)],
         ['Biaya Admin', formatIDR(0)],
-        [{ content: 'Total', styles: { fontStyle: 'bold', textColor: [10, 35, 66] } }, { content: formatIDR(grandTotal), styles: { fontStyle: 'bold', textColor: [10, 35, 66] } }],
+        [
+          { content: 'Total', styles: { fontStyle: 'bold', textColor: [10, 35, 66] } },
+          { content: formatIDR(grandTotal), styles: { fontStyle: 'bold', textColor: [10, 35, 66] } },
+        ],
       ],
       theme: 'grid',
       startY: afterItemsY + 6,
@@ -197,7 +216,6 @@ export function InvoiceModal({
 
     // ==== Cap (opsional) ====
     try {
-      // convert import URL -> dataURL
       const capDataUrl = await (async (src: string) => {
         const res = await fetch(src);
         const blob = await res.blob();
@@ -214,21 +232,22 @@ export function InvoiceModal({
       doc.addImage(capDataUrl, 'PNG', x, y, size, size);
       afterTotalsY = y + size;
     } catch {
-      // jika gagal load gambar, skip tanpa error
+      // skip jika gagal
     }
 
-    // Catatan kecil
+    // ==== Catatan harga ====
     doc.setFontSize(9);
     doc.setTextColor(90);
-    // doc.text(
-    //   `Tarif saat ini: ${formatIDR(unitPrice)} / kg. Perhitungan dibulatkan ke atas (ceil).`,
-    //   margin,
-    //   afterTotalsY + 10,
-    // );
+    const noteTitleY = afterTotalsY + 10;
+    doc.text('Catatan harga: Subtotal dihitung dari Jastip Markup + Ongkir Markup per item (tidak dibagi dengan kg).', margin, noteTitleY);
 
-    doc.save(`${order.no}_Invoice.pdf`);
+    if (priceNotes) {
+      const noteLines = doc.splitTextToSize(priceNotes, right - margin);
+      doc.text(noteLines, margin, noteTitleY + 6);
+    }
+
+    doc.save(`${(order as any).no || order.id || 'invoice'}_Invoice.pdf`);
   }
-
 
   return (
     <Modal onClose={onClose} title={`Invoice`} size="5xl" contentClassName="p-0">
@@ -265,21 +284,21 @@ export function InvoiceModal({
               </div>
             </div>
 
-            {/* Items table — 4 kolom rapi & konsisten */}
+            {/* Items table */}
             <div className="mt-4 overflow-x-auto">
               <table className="table-a4 table-fixed w-full text-sm">
                 <colgroup>
                   <col style={{ width: '44%' }} /> {/* Nama Barang */}
                   <col style={{ width: '26%' }} /> {/* Kategori */}
                   <col style={{ width: '10%' }} /> {/* Kg */}
-                  <col style={{ width: '20%' }} /> {/* Subtotal */}
+                  <col style={{ width: '20%' }} /> {/* Subtotal (Markup) */}
                 </colgroup>
                 <thead>
                   <tr className="bg-[#0a2342] text-white">
                     <th className="tcell text-left font-semibold">Nama Barang</th>
                     <th className="tcell text-left font-semibold">Kategori</th>
                     <th className="tcell text-right font-semibold">Kg</th>
-                    <th className="tcell text-right font-semibold">Subtotal</th>
+                    <th className="tcell text-right font-semibold">Subtotal (Markup)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -290,7 +309,9 @@ export function InvoiceModal({
                         <td className="tcell">{it.namaBarang}</td>
                         <td className="tcell">{it.kategori}</td>
                         <td className="tcell text-right align-nums whitespace-nowrap">{d.kg}</td>
-                        <td className="tcell text-right align-nums whitespace-nowrap">{formatIDR(d.lineTotal)}</td>
+                        <td className="tcell text-right align-nums whitespace-nowrap">
+                          {formatIDR(d.lineTotal)}{/* jastipMarkup + ongkirMarkup */}
+                        </td>
                       </tr>
                     );
                   })}
@@ -298,19 +319,23 @@ export function InvoiceModal({
               </table>
             </div>
 
-
             {/* Notes + Totals */}
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* <div>
+              <div>
                 <div className="text-sm text-neutral-500 mb-1">Catatan</div>
                 <div className="text-sm text-neutral-700">
-                  Tarif saat ini: {formatIDR(unitPrice)} / kg. Perhitungan dibulatkan ke atas (ceil).
+                  Subtotal dihitung dari <b>Jastip Markup + Ongkir Markup</b> per item (tidak dibagi dengan kg).
                   {order.catatan ? (<div className="mt-1 text-neutral-600">Catatan pesanan: {order.catatan}</div>) : null}
+                  {priceNotes ? (
+                    <div className="mt-2 text-xs text-neutral-500 whitespace-pre-line">
+                      {priceNotes}
+                    </div>
+                  ) : null}
                 </div>
-              </div> */}
+              </div>
               <div className="sm:justify-self-end w-full sm:w-80">
                 <div className="flex items-center justify-between py-1">
-                  <span className="text-sm text-neutral-600">Subtotal</span>
+                  <span className="text-sm text-neutral-600">Subtotal (Markup)</span>
                   <span className="font-medium">{formatIDR(totals.subtotal)}</span>
                 </div>
                 <div className="flex items-center justify-between py-1">
@@ -349,3 +374,5 @@ export function InvoiceModal({
     </Modal>
   );
 }
+
+
