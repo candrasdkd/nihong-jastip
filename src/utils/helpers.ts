@@ -11,3 +11,23 @@ export function genOrderNo(existing: Order[]) {
   const countToday = existing.filter((o) => o.no.includes(ymd)).length + 1;
   return `ORD-${ymd}-${String(countToday).padStart(3, '0')}`;
 }
+
+
+export const formatAndAddYear = (dateString: string) => {
+  // 1. Buat objek Date dari string input
+  const date = new Date(dateString);
+
+  // 2. Tambahkan satu tahun ke tanggal tersebut
+  date.setFullYear(date.getFullYear());
+
+  // 3. Format tanggal ke "5 November 2025" menggunakan Intl.DateTimeFormat
+  // 'id-ID' digunakan untuk memastikan nama bulan dalam Bahasa Indonesia
+  const options = {
+    day: "numeric" as const,
+    month: "long" as const,
+    year: "numeric" as const,
+  };
+
+  return new Intl.DateTimeFormat('id-ID', options).format(date);
+};
+

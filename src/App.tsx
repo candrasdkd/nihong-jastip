@@ -4,6 +4,7 @@ import { Dashboard } from './pages/Dashboard';
 import { OrdersPage } from './pages/OrdersPage';
 import { CustomersPage } from './pages/CustomersPage';
 import { CalculatorCard } from './pages/CalculatorCard';
+import { LedgerPage } from './pages/LedgerPage';
 import { Customer, Order } from './types';
 import { formatIDR } from './utils/format';
 import { Button } from './components/ui/Button';
@@ -27,7 +28,7 @@ function startOfMonth(d: Date) { return new Date(d.getFullYear(), d.getMonth(), 
 function endOfMonth(d: Date) { return new Date(d.getFullYear(), d.getMonth() + 1, 0); }
 
 export default function App() {
-  const [tab, setTab] = useState<'dashboard' | 'orders' | 'customers' | 'calculator'>('dashboard');
+  const [tab, setTab] = useState<'dashboard' | 'orders' | 'customers' | 'calculator' | 'cash'>('dashboard');
 
   // ⬇️ BUKAN localStorage lagi — murni state
   const [orders, setOrders] = useState<Order[]>([]);
@@ -66,11 +67,6 @@ export default function App() {
     return () => unsub();
   }, [tab]);
 
-  // (opsional) hitung aktif buat header kecil dsb — tidak wajib
-  const activeOrders = useMemo(
-    () => orders.filter((o: any) => !['Selesai', 'Dibatalkan', 'Sudah Diterima'].includes(String(o?.status || ''))),
-    [orders]
-  );
 
   return (
     <div className="min-h-screen bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
@@ -104,6 +100,7 @@ export default function App() {
               <TabButton current={tab} setTab={setTab} id="orders">Pesanan</TabButton>
               <TabButton current={tab} setTab={setTab} id="customers">Konsumen</TabButton>
               <TabButton current={tab} setTab={setTab} id="calculator">Kalkulator</TabButton>
+              <TabButton current={tab} setTab={setTab} id="cash">Kas</TabButton>
             </nav>
           </div>
 
@@ -123,6 +120,7 @@ export default function App() {
         {tab === 'orders' && <OrdersPage customers={customers} orders={orders} setOrders={setOrders} unitPrice={unitPrice} />}
         {tab === 'customers' && <CustomersPage />}
         {tab === 'calculator' && <CalculatorCard unitPrice={unitPrice} openUnitPrice={() => setShowUnitPriceModal(true)} />}
+        {tab === 'cash' && <LedgerPage />}
       </main>
 
       {showUnitPriceModal && (

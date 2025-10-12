@@ -1,12 +1,13 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Customer, Order, OrderStatus } from '../types';
-import { computeTotal, genOrderNo, todayStr } from '../utils/helpers';
+import { computeTotal, todayStr } from '../utils/helpers';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
 import { Modal } from './ui/Modal';
 import { formatIDR } from '../utils/format';
 import SearchableSelect from './ui/SearchableSelect';
 import { Select } from './ui/Select';
+import { RupiahInput } from './ui/RupiahInput';
 
 const STATUS_BARU = ['Belum Membayar', 'Pembayaran Selesai', 'Sedang Pengiriman', 'Sudah Diterima'] as const;
 const STATUS_LAMA: OrderStatus[] = ['Pending', 'Diproses', 'Selesai', 'Dibatalkan'];
@@ -18,57 +19,6 @@ const num = (v: any) => {
   const n = parseFloat(String(v));
   return Number.isFinite(n) ? n : 0;
 };
-
-/** ===== Rupiah Input (masking) ===== */
-function RupiahInput({
-  label,
-  value,
-  onChange,
-  disabled,
-  className,
-  placeholder = 'Rp 0',
-}: {
-  label: string;
-  value: number;
-  onChange: (val: number) => void;
-  disabled?: boolean;
-  className?: string;
-  placeholder?: string;
-}) {
-  const fmt = (n: number) => formatIDR(Math.max(0, Math.floor(n || 0)));
-  const [text, setText] = useState<string>(value ? fmt(value) : '');
-
-  // Sinkronisasi ketika prop value berubah dari luar
-  useEffect(() => {
-    setText(value ? fmt(value) : '');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value ?? '';
-    const digits = raw.replace(/[^\d]/g, '');
-    if (!digits) {
-      setText('');
-      onChange(0);
-      return;
-    }
-    const n = Number(digits);
-    setText(fmt(n));
-    onChange(n);
-  };
-
-  return (
-    <Input
-      label={label}
-      type="text"
-      value={text}
-      onChange={handleChange}
-      disabled={disabled}
-      placeholder={placeholder}
-      className={className}
-    />
-  );
-}
 
 /** ======= Form ======= */
 export function OrderFormModal({

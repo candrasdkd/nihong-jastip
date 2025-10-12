@@ -1,7 +1,4 @@
-// components/BottomTabBar.tsx
-import React from 'react';
-
-type TabId = 'dashboard' | 'orders' | 'customers' | 'calculator';
+type TabId = 'dashboard' | 'orders' | 'customers' | 'calculator' | 'cash';
 
 export function BottomTabBar({
     current,
@@ -38,11 +35,12 @@ export function BottomTabBar({
             style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
             <nav className="max-w-7xl mx-auto px-3 py-2">
-                <div className="grid grid-cols-4 gap-1">
+                <div className="grid grid-cols-5 gap-1">
                     <Item id="dashboard" label="Dashboard" Icon={IconHome} />
                     <Item id="orders" label="Pesanan" Icon={IconClipboard} />
                     <Item id="customers" label="Konsumen" Icon={IconUsers} />
                     <Item id="calculator" label="Kalkulator" Icon={IconCalculator} />
+                    <Item id="cash" label="Kas" Icon={IconCash} />
                 </div>
             </nav>
         </footer>
@@ -86,6 +84,15 @@ function IconCalculator({ className = '' }) {
             <rect x="4" y="3" width="16" height="18" rx="2" strokeWidth="1.8" />
             <path strokeWidth="1.8" d="M8 7h8" />
             <path strokeWidth="1.8" d="M8 11h3M8 15h3M13 11h3M13 15h3" />
+        </svg>
+    );
+}
+
+function IconCash({ className = '' }) {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
+            <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8v8m0-8C9.243 4 7 5.343 7 7.5S9.243 11 12 11s5-1.343 5-3.5S14.757 4 12 4zM5 19h14a2 2 0 0 0 2-2v-5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2z" />
         </svg>
     );
 }

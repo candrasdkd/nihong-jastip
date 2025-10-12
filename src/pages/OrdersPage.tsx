@@ -15,10 +15,9 @@ import {
   toExtended,
   updateOrder,
 } from '../services/ordersFirebase';
+import { formatAndAddYear } from '../utils/helpers';
 
-const NAVY = '#0a2342';
-const NAVY_DARK = '#081a31';
-
+// ===== Type Definitions =====
 type ExtendedOrder = Order & Partial<{
   pengiriman: string;
   catatan: string;
@@ -28,129 +27,64 @@ type ExtendedOrder = Order & Partial<{
   hargaOngkirMarkup: number;
 }>;
 
-// util default range: start = awal bulan 2 bulan lalu; end = akhir bulan ini
+// ===== Helper Functions =====
 function toInputDate(d: Date) {
-  // yyyy-MM-dd
   const iso = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString();
   return iso.slice(0, 10);
 }
 function startOfMonth(d: Date) { return new Date(d.getFullYear(), d.getMonth(), 1); }
 function endOfMonth(d: Date) { return new Date(d.getFullYear(), d.getMonth() + 1, 0); }
 
+// ===== UI Components (New & Refined) =====
+
 function StatusPill({ status }: { status: string }) {
   const map: Record<string, string> = {
-    'Belum Membayar': 'bg-orange-50 text-orange-700 ring-1 ring-orange-200',
-    'Pembayaran Selesai': 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
-    'Sedang Pengiriman': 'bg-blue-50 text-blue-700 ring-1 ring-blue-200',
-    'Sudah Diterima': 'bg-[#0a2342]/10 text-[#0a2342] ring-1 ring-[#0a2342]/20',
-    Pending: 'bg-orange-50 text-orange-700 ring-1 ring-orange-200',
-    Diproses: 'bg-orange-100 text-orange-800 ring-1 ring-orange-200',
-    Selesai: 'bg-[#0a2342]/10 text-[#0a2342] ring-1 ring-[#0a2342]/20',
-    Dibatalkan: 'bg-red-50 text-red-700 ring-1 ring-red-200',
+    'Belum Membayar': 'bg-amber-100 text-amber-800 ring-1 ring-inset ring-amber-600/20',
+    'Pembayaran Selesai': 'bg-emerald-100 text-emerald-800 ring-1 ring-inset ring-emerald-600/20',
+    'Sedang Pengiriman': 'bg-blue-100 text-blue-800 ring-1 ring-inset ring-blue-600/20',
+    'Sudah Diterima': 'bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-600/20',
+    'Selesai': 'bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-600/20',
+    'Pending': 'bg-yellow-100 text-yellow-800 ring-1 ring-inset ring-yellow-600/20',
+    'Diproses': 'bg-sky-100 text-sky-800 ring-1 ring-inset ring-sky-600/20',
+    'Dibatalkan': 'bg-red-100 text-red-800 ring-1 ring-inset ring-red-600/20',
   };
-  const cls = map[status] || 'bg-neutral-100 text-neutral-700 ring-1 ring-neutral-200';
-  return <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${cls}`}>{status}</span>;
+  const cls = map[status] || 'bg-gray-100 text-gray-800 ring-1 ring-inset ring-gray-600/20';
+  return <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${cls}`}>{status}</span>;
 }
 
-export function OrdersPage({
-  orders,
-  setOrders,
-  customers,
-  unitPrice,
-}: {
+// Simple SVG Icons for better UI
+const IconPlus = (props: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M5 12h14" /><path d="M12 5v14" /></svg>);
+const IconFilter = (props: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>);
+const IconInvoice = (props: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><line x1="10" y1="9" x2="8" y2="9" /></svg>);
+const IconChevronDown = (props: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m6 9 6 6 6-6" /></svg>);
+const IconWallet = (props: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" /><path d="M3 5v14a2 2 0 0 0 2 2h15" /></svg>);
+const IconScale = (props: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m16 16 3-8 3 8c-2 1-4 1-6 0" /><path d="m2 16 3-8 3 8c-2 1-4 1-6 0" /><path d="M7 21h10" /><path d="M12 3v18" /><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2" /></svg>);
+
+// ===== Main Page Component =====
+export function OrdersPage({ orders, setOrders, customers, unitPrice }: {
   orders: ExtendedOrder[];
   setOrders: (updater: (prev: ExtendedOrder[]) => ExtendedOrder[]) => void;
   customers: Customer[];
   unitPrice: number;
 }) {
+  // ===== State =====
   const [q, setQ] = useState('');
   const [statusFilter, setStatusFilter] = useState<string | ''>('');
-
-  // DEFAULT: 2 bulan lalu (awal bulan) → bulan ini (akhir bulan)
   const now = useMemo(() => new Date(), []);
-  const defaultFrom = useMemo(() => {
-    const m2 = new Date(now.getFullYear(), now.getMonth() - 2, 1);
-    return toInputDate(startOfMonth(m2));
-  }, [now]);
+  const defaultFrom = useMemo(() => toInputDate(startOfMonth(new Date(now.getFullYear(), now.getMonth() - 2, 1))), [now]);
   const defaultTo = useMemo(() => toInputDate(endOfMonth(now)), [now]);
-
   const [dateFrom, setDateFrom] = useState<string>(defaultFrom);
   const [dateTo, setDateTo] = useState<string>(defaultTo);
-
   const [editing, setEditing] = useState<ExtendedOrder | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showInvoice, setShowInvoice] = useState<{ show: boolean; order?: ExtendedOrder; itemIds?: string[] }>({ show: false });
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [showFilter, setShowFilter] = useState(false);
 
+  // ===== Memos & Derived State =====
   const selectedOrders = useMemo(() => orders.filter(o => selectedIds.includes(o.id)), [orders, selectedIds]);
   const sameCustomer = selectedOrders.length > 0 && selectedOrders.every(o => o.namaPelanggan === selectedOrders[0]?.namaPelanggan);
-  const hasUnpaid = selectedOrders.some(o => String(o.status) === 'Belum Membayar');
-  const canCreateInvoice = selectedOrders.length > 0 && sameCustomer && !hasUnpaid;
-
-  function compute(o: ExtendedOrder) {
-    const kg = Math.ceil(Number(o.jumlahKg ?? 0));
-    const baseOngkir = typeof o.hargaOngkir === 'number' ? o.hargaOngkir : kg * unitPrice;
-    const jastipMarkup = Number(o.hargaJastipMarkup ?? 0);
-    const baseJastip = Number(o.hargaJastip ?? 0);
-    const ongkirMarkup = Number(o.hargaOngkirMarkup ?? 0);
-    const totalPembayaran = jastipMarkup + ongkirMarkup;
-    const totalKeuntungan = (jastipMarkup + ongkirMarkup) - (baseOngkir + baseJastip);
-    return { kg, baseJastip, jastipMarkup, baseOngkir, ongkirMarkup, totalPembayaran, totalKeuntungan };
-  }
-
-  // 🔄 Subscribe ke Firestore berdasarkan: q, status, dateFrom, dateTo, sort desc
-  useEffect(() => {
-    console.log(statusFilter, dateFrom, dateTo);
-
-    const unsub = subscribeOrders(
-      {
-        q, // boleh tetap dikirim; kalau service-mu belum pakai, aman diabaikan
-        status: statusFilter || '',
-        fromInput: dateFrom || '',
-        toInput: dateTo || '',
-        limit: 250,
-        sort: 'desc',
-      },
-      (rows) => {
-        const ex = rows.map(toExtended);
-        const filtered = q ? ex.filter((o) => matchSearch(o, q)) : ex;
-        console.log('got orders', rows.length, '->', filtered.length);
-
-        setOrders(() => filtered);
-
-        // bersihkan pilihan yang sudah tidak ada
-        setSelectedIds((prev) => prev.filter((id) => filtered.some((x) => x.id === id)));
-      }
-    );
-    return () => unsub();
-  }, [q, statusFilter, dateFrom, dateTo, setOrders]);
-
-
-  function normalize(v: any) {
-    return String(v ?? '').toLowerCase();
-  }
-
-  function matchSearch(o: ExtendedOrder, q: string) {
-    if (!q) return true;
-    const s = q.trim().toLowerCase();
-    return [
-      o.no,
-      o.tanggal,
-      o.pengiriman,
-      o.namaBarang,
-      o.kategori,
-      o.namaPelanggan,
-      o.catatan,
-    ].some((field) => normalize(field).includes(s));
-  }
-
-  async function handleDelete(id: string) {
-    if (!confirm('Hapus pesanan ini?')) return;
-    await deleteOrder(id);
-  }
-
-  // ======== Filter Modal ========
-  const [showFilter, setShowFilter] = useState(false);
   const filterCount = useMemo(() => {
     let n = 0;
     if (statusFilter) n++;
@@ -159,360 +93,280 @@ export function OrdersPage({
     return n;
   }, [statusFilter, dateFrom, dateTo, defaultFrom, defaultTo]);
 
+  // ===== Data Fetching & Subscription =====
+  useEffect(() => {
+    const unsub = subscribeOrders({
+      q, status: statusFilter || '', fromInput: dateFrom || '',
+      toInput: dateTo || '', limit: 250, sort: 'desc',
+    }, (rows) => {
+      const ex = rows.map(toExtended);
+      const filtered = q ? ex.filter((o) => matchSearch(o, q)) : ex;
+      setOrders(() => filtered);
+      setSelectedIds((prev) => prev.filter((id) => filtered.some((x) => x.id === id)));
+    });
+    return () => unsub();
+  }, [q, statusFilter, dateFrom, dateTo, setOrders]);
+
+  // ===== Helper Functions =====
+  function matchSearch(o: ExtendedOrder, query: string) {
+    if (!query) return true;
+    const s = query.trim().toLowerCase();
+    return [o.no, o.tanggal, o.pengiriman, o.namaBarang, o.kategori, o.namaPelanggan, o.catatan]
+      .some((field) => String(field ?? '').toLowerCase().includes(s));
+  }
+
+  // ===== Event Handlers =====
+  async function handleDelete(id: string) {
+    if (!confirm('Hapus pesanan ini?')) return;
+    await deleteOrder(id);
+  }
   const handleApplyFilters = (payload: { status: string; from: string; to: string }) => {
     setStatusFilter(payload.status || '');
     setDateFrom(payload.from || defaultFrom);
     setDateTo(payload.to || defaultTo);
     setShowFilter(false);
   };
-
   const handleResetFilters = () => {
     setStatusFilter('');
     setDateFrom(defaultFrom);
     setDateTo(defaultTo);
   };
+  const toggleRowExpansion = (id: string) => {
+    setExpandedRows(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   return (
-    <div className="space-y-4">
-      {/* Filter & Action */}
-      <div className="flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
-        {/* Kiri: Search + Filter btn */}
-        <div className="flex flex-wrap gap-2 w-full sm:w-auto items-center">
-          <Input
-            placeholder="Cari token (no/barang/pelanggan/kategori/pengiriman/catatan)"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            className="flex-grow min-w-[220px] focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-          />
+    <div className="bg-slate-50 min-h-screen p-4 sm:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Page Header */}
+        <header>
+          <h1 className="text-3xl font-bold text-slate-800">Manajemen Pesanan</h1>
+          <p className="text-sm text-slate-500 mt-1">Lacak, kelola, dan buat invoice untuk semua pesanan pelanggan.</p>
+        </header>
 
-          <Button
-            variant="ghost"
-            onClick={() => setShowFilter(true)}
-            className="!bg-white !text-[#0a2342] !border !border-[#0a2342]/20 ring-1 ring-[#0a2342]/10 hover:!bg-orange-50 dark:!text-[#0a2342] [&_*]:!text-[#0a2342]"
-            title="Filter status & tanggal"
-          >
-            <span className="!text-[#0a2342]">Filter</span>
-            {filterCount > 0 && (
-              <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs rounded-full bg-orange-100 text-orange-700 ring-1 ring-orange-200">
-                {filterCount}
-              </span>
-            )}
-          </Button>
-        </div>
+        {/* Main Content Area */}
+        <Card className="bg-white p-4 sm:p-6 shadow-sm">
+          {/* Header Actions */}
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-between mb-5">
+            <Input
+              placeholder="Cari pesanan (no, pelanggan, barang, dll)..."
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              className="w-full sm:w-auto sm:min-w-[300px] lg:min-w-[400px] focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+            />
+            <div className="flex items-center gap-2 justify-end">
+              <Button variant="outline" onClick={() => setShowFilter(true)} className="flex items-center gap-1.5">
+                <IconFilter className="w-4 h-4" />
+                <span>Filter</span>
+                {filterCount > 0 && (
+                  <span className="ml-1.5 inline-flex items-center justify-center px-2 py-0.5 text-xs rounded-full bg-orange-100 text-orange-800">{filterCount}</span>
+                )}
+              </Button>
+              <Button onClick={() => { if (selectedOrders.length > 0 && !sameCustomer) { alert('Silakan pilih pesanan dari pelanggan yang sama.'); return; } setShowInvoice({ show: true, order: selectedOrders[0], itemIds: selectedIds }); }} className="flex items-center gap-1.5" variant="outline">
+                <IconInvoice className="w-4 h-4" />
+                <span>Invoice {selectedIds.length > 0 ? `(${selectedIds.length})` : ''}</span>
+              </Button>
+              <Button onClick={() => { setEditing(null); setShowForm(true); }} className="bg-slate-800 hover:bg-slate-900 text-white flex items-center gap-1.5">
+                <IconPlus className="w-4 h-4" />
+                <span>Tambah Pesanan</span>
+              </Button>
+            </div>
+          </div>
 
-        {/* Kanan: Actions */}
-        <div className="flex flex-wrap gap-2">
-          <Button
-            onClick={() => { setEditing(null); setShowForm(true); }}
-            className="bg-orange-600 hover:bg-orange-700 text-white border border-orange-700/20"
-          >
-            + Tambah Pesanan
-          </Button>
-          <Button
-            onClick={() => {
-              if (selectedOrders.length === 0) return;
-              if (!sameCustomer) { alert('Silakan pilih pesanan dari pelanggan yang sama.'); return; }
-              // if (hasUnpaid) { alert('Tidak bisa membuka/membuat invoice untuk pesanan dengan status "Belum Membayar".'); return; }
-              setShowInvoice({ show: true, order: selectedOrders[0], itemIds: selectedIds });
-            }}
-            // disabled={!canCreateInvoice}
-            className={`bg-[#0a2342] hover:bg-[#081a31] text-white border border-[#0a2342]/20`}
-          >
-            Buat Invoice {selectedIds.length > 0 ? `(${selectedIds.length})` : ''}
-          </Button>
-        </div>
-      </div>
-
-      {/* Desktop Table */}
-      <Card className="overflow-x-auto hidden sm:block border ring-1 ring-[#0a2342]/10">
-        <table className="min-w-[1400px] text-sm table-auto">
-          <thead className="sticky top-0" style={{ backgroundColor: NAVY }}>
-            <tr className="text-left text-white">
-              <th className="px-4 py-3 font-semibold border-b border-white/10">
-                <input
-                  type="checkbox"
-                  checked={orders.length > 0 && orders.every(o => selectedIds.includes(o.id))}
-                  onChange={(e) => {
-                    const ids = orders.map(o => o.id);
-                    if (e.target.checked) setSelectedIds(prev => Array.from(new Set([...prev, ...ids])));
-                    else setSelectedIds(prev => prev.filter(id => !ids.includes(id)));
-                  }}
-                />
-              </th>
-              {[
-                'No', 'Tanggal', 'Pengiriman', 'Nama Barang', 'Kategori', 'Nama Pelanggan',
-                'Berat (Kg, ceil)', 'Harga Jastip', 'Jastip Markup', 'Harga Ongkir', 'Ongkir Markup',
-                'Total Pembayaran', 'Total Keuntungan', 'Status', 'Catatan', 'Aksi',
-              ].map((h) => (
-                <th key={h} className="px-4 py-3 font-semibold border-b border-white/10 whitespace-nowrap">{h}</th>
-              ))}
-            </tr>
-          </thead>
-
-          <tbody>
-            {orders.map((o) => {
-              const d = compute(o);
-              return (
-                <tr key={o.id} className="odd:bg-white even:bg-orange-50 hover:bg-orange-100/60 transition-colors">
-                  <td className="px-4 py-3">
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.includes(o.id)}
-                      onChange={(e) => setSelectedIds(prev => e.target.checked ? [...prev, o.id] : prev.filter(id => id !== o.id))}
-                    />
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">{o.no}</td>
-                  <td className="px-4 py-3 whitespace-nowrap">{o.tanggal}</td>
-                  <td className="px-4 py-3 whitespace-nowrap">{o.pengiriman ?? '-'}</td>
-                  <td className="px-4 py-3">{o.namaBarang}</td>
-                  <td className="px-4 py-3">{o.kategori}</td>
-                  <td className="px-4 py-3">{o.namaPelanggan}</td>
-                  <td className="px-4 py-3 text-right">{d.kg}</td>
-                  <td className="px-4 py-3 text-right">{formatIDR(d.baseJastip)}</td>
-                  <td className="px-4 py-3 text-right">{formatIDR(d.jastipMarkup)}</td>
-                  <td className="px-4 py-3 text-right">{formatIDR(d.baseOngkir)}</td>
-                  <td className="px-4 py-3 text-right">{formatIDR(d.ongkirMarkup)}</td>
-                  <td className="px-4 py-3 text-right font-semibold">{formatIDR(d.totalPembayaran)}</td>
-                  <td className="px-4 py-3 text-right font-semibold">{formatIDR(d.totalKeuntungan)}</td>
-                  <td className="px-4 py-3"><StatusPill status={String(o.status) || 'Belum Membayar'} /></td>
-                  <td className="px-4 py-3 w-[320px]"><div className="truncate" title={o.catatan ?? ''}>{o.catatan ?? '-'}</div></td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="flex gap-2">
-                      <Button variant="ghost" className="text-[#0a2342] hover:bg-[#0a2342]/5" onClick={() => { setEditing(o); setShowForm(true); }}>Edit</Button>
-                      <Button variant="danger" onClick={() => handleDelete(o.id)}>Hapus</Button>
-                    </div>
-                  </td>
+          {/* Desktop Table */}
+          <div className="overflow-x-auto hidden sm:block">
+            <table className="min-w-full text-sm">
+              <thead className="bg-slate-50 text-left">
+                <tr className="text-slate-600">
+                  <th className="px-4 py-3 font-semibold w-12"><input type="checkbox" checked={orders.length > 0 && orders.every(o => selectedIds.includes(o.id))} onChange={(e) => setSelectedIds(e.target.checked ? orders.map(o => o.id) : [])} /></th>
+                  <th className="px-4 py-3 font-semibold">No</th>
+                  <th className="px-4 py-3 font-semibold">Tanggal</th>
+                  <th className="px-4 py-3 font-semibold">Pelanggan</th>
+                  <th className="px-4 py-3 font-semibold">Barang</th>
+                  <th className="px-4 py-3 font-semibold">Status</th>
+                  <th className="px-4 py-3 font-semibold text-right">Total Pembayaran</th>
+                  <th className="px-4 py-3 font-semibold text-right">Keuntungan</th>
+                  <th className="px-4 py-3 font-semibold text-center w-28">Aksi</th>
                 </tr>
+              </thead>
+              <tbody>
+                {orders.length === 0 && (
+                  <tr><td colSpan={9} className="px-4 py-10 text-center text-slate-500">Tidak ada data pesanan.</td></tr>
+                )}
+                {orders.map((o) => (
+                  <ExpandableRow
+                    key={o.id}
+                    order={o}
+                    unitPrice={unitPrice}
+                    isExpanded={expandedRows.has(o.id)}
+                    isSelected={selectedIds.includes(o.id)}
+                    onToggleExpand={() => toggleRowExpansion(o.id)}
+                    onToggleSelect={() => setSelectedIds(prev => prev.includes(o.id) ? prev.filter(id => id !== o.id) : [...prev, o.id])}
+                    onEdit={() => { setEditing(o); setShowForm(true); }}
+                    onDelete={() => handleDelete(o.id)}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Cards */}
+          <div className="sm:hidden space-y-3">
+            {orders.length === 0 && <p className="text-center text-sm text-slate-500 py-8">Tidak ada data pesanan.</p>}
+            {orders.map((o) => {
+              const d = compute(o, unitPrice);
+              const statusColorMap: Record<string, string> = { 'Belum Membayar': 'border-amber-500', 'Pembayaran Selesai': 'border-emerald-500', 'Sedang Pengiriman': 'border-blue-500', 'Sudah Diterima': 'border-slate-400', 'Selesai': 'border-slate-400', 'Dibatalkan': 'border-red-500' };
+              return (
+                <Card key={o.id} className={`p-0 overflow-hidden border-l-4 ${statusColorMap[String(o.status)] || 'border-gray-400'}`}>
+                  <div className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <input type="checkbox" checked={selectedIds.includes(o.id)} onChange={() => setSelectedIds(prev => prev.includes(o.id) ? prev.filter(id => id !== o.id) : [...prev, o.id])} className="mt-1" />
+                        <div>
+                          <p className="font-semibold text-slate-800">{o.namaPelanggan}</p>
+                          <p className="text-xs text-slate-500">#{o.no} &bull; {formatAndAddYear(o.tanggal)}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-lg text-slate-800 whitespace-nowrap">{formatIDR(d.totalPembayaran)}</p>
+                        <StatusPill status={String(o.status) || 'Belum Membayar'} />
+                      </div>
+                    </div>
+                    <p className="mt-3 text-slate-700">{o.namaBarang}</p>
+
+                    {/* === NEW SECTION FOR DETAILS === */}
+                    <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <div className="text-xs text-slate-500">Keuntungan</div>
+                        <div className="font-semibold text-emerald-600">{formatIDR(d.totalKeuntungan)}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-slate-500">Berat</div>
+                        <div className="font-semibold text-slate-800">{d.kg} Kg</div>
+                      </div>
+                    </div>
+                    {/* === END OF NEW SECTION === */}
+
+                  </div>
+                  <div className="bg-slate-50 px-4 py-2 flex gap-2 border-t border-slate-200">
+                    <Button variant="ghost" onClick={() => { setEditing(o); setShowForm(true); }}>Edit</Button>
+                    <Button variant="danger-ghost" onClick={() => handleDelete(o.id)}>Hapus</Button>
+                  </div>
+                </Card>
               );
             })}
-            {orders.length === 0 && (
-              <tr><td className="px-4 py-6 text-center text-neutral-500" colSpan={16}>Tidak ada data.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </Card>
+          </div>
 
-      {/* Mobile Cards */}
-      <div className="sm:hidden space-y-3">
-        {orders.map((o) => {
-          const d = compute(o);
-          return (
-            <Card key={o.id} className="p-4 border border-[#0a2342]/10">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.includes(o.id)}
-                    onChange={(e) => setSelectedIds(prev => e.target.checked ? [...prev, o.id] : prev.filter(id => id !== o.id))}
-                  />
-                  <div>
-                    <div className="text-xs text-neutral-500">No</div>
-                    <div className="font-semibold">{o.no}</div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-xs text-neutral-500">Total Pembayaran</div>
-                  <div className="font-semibold">{formatIDR(d.totalPembayaran)}</div>
-                </div>
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                <div><div className="text-neutral-500 text-xs">Tanggal</div><div>{o.tanggal}</div></div>
-                <div><div className="text-neutral-500 text-xs">Pengiriman</div><div>{o.pengiriman ?? '-'}</div></div>
-                <div><div className="text-neutral-500 text-xs">Barang</div><div className="font-medium">{o.namaBarang}</div></div>
-                <div><div className="text-neutral-500 text-xs">Kategori</div><div>{o.kategori}</div></div>
-                <div><div className="text-neutral-500 text-xs">Pelanggan</div><div>{o.namaPelanggan}</div></div>
-                <div><div className="text-neutral-500 text-xs">Kg (ceil)</div><div>{d.kg}</div></div>
-                <div><div className="text-neutral-500 text-xs">Harga Jastip</div><div>{formatIDR(d.baseJastip)}</div></div>
-                <div><div className="text-neutral-500 text-xs">Jastip Markup</div><div>{formatIDR(d.jastipMarkup)}</div></div>
-                <div><div className="text-neutral-500 text-xs">Harga Ongkir</div><div>{formatIDR(d.baseOngkir)}</div></div>
-                <div><div className="text-neutral-500 text-xs">Ongkir Markup</div><div>{formatIDR(d.ongkirMarkup)}</div></div>
-                <div><div className="text-neutral-500 text-xs">Total Keuntungan</div><div>{formatIDR(d.totalKeuntungan)}</div></div>
-                <div className="col-span-2"><div className="text-neutral-500 text-xs">Status</div><div><StatusPill status={String(o.status) || 'Belum Membayar'} /></div></div>
-                <div className="col-span-2"><div className="text-neutral-500 text-xs">Catatan</div><div>{o.catatan ?? '-'}</div></div>
-              </div>
-              <div className="mt-3 flex gap-2">
-                <Button variant="ghost" className="text-[#0a2342] hover:bg-[#0a2342]/5" onClick={() => { setEditing(o); setShowForm(true); }}>Edit</Button>
-                <Button variant="danger" onClick={() => handleDelete(o.id)}>Hapus</Button>
-              </div>
-            </Card>
-          );
-        })}
-        {orders.length === 0 && <p className="text-center text-sm text-neutral-500">Tidak ada data.</p>}
+        </Card>
       </div>
 
-      {showForm && (
-        <OrderFormModal
-          customers={customers.length > 0 ? customers : []}
-          initial={editing || undefined}
-          onClose={() => setShowForm(false)}
-          onSubmit={async (val) => {
-            const dto = fromExtended(val as any);
-            if (editing?.id) await updateOrder(editing.id, dto, unitPrice);
-            else await createOrder(dto, unitPrice);
-            setShowForm(false);
-          }}
-          existing={orders}
-          unitPrice={unitPrice}
-        />
-      )}
-
-      {showInvoice.show && showInvoice.order && (
-        <InvoiceModal
-          order={showInvoice.order}
-          orders={orders}
-          itemIds={showInvoice.itemIds}
-          customer={customers.find((c) => c.nama === showInvoice.order!.namaPelanggan)}
-          onClose={() => setShowInvoice({ show: false })}
-          unitPrice={unitPrice}
-        />
-      )}
-
-      {showFilter && (
-        <FilterModal
-          initial={{ status: statusFilter, from: dateFrom, to: dateTo }}
-          defaultRange={{ from: defaultFrom, to: defaultTo }}
-          onApply={handleApplyFilters}
-          onReset={() => { handleResetFilters(); setShowFilter(false); }}
-          onClose={() => setShowFilter(false)}
-        />
-      )}
+      {/* Modals */}
+      {showForm && <OrderFormModal customers={customers} initial={editing || undefined} onClose={() => setShowForm(false)} onSubmit={async (val) => { const dto = fromExtended(val as any); if (editing?.id) await updateOrder(editing.id, dto, unitPrice); else await createOrder(dto, unitPrice); setShowForm(false); }} existing={orders} unitPrice={unitPrice} />}
+      {showInvoice.show && showInvoice.order && <InvoiceModal order={showInvoice.order} orders={orders} itemIds={showInvoice.itemIds} customer={customers.find((c) => c.nama === showInvoice.order!.namaPelanggan)} onClose={() => setShowInvoice({ show: false })} unitPrice={unitPrice} />}
+      {showFilter && <FilterModal initial={{ status: statusFilter, from: dateFrom, to: dateTo }} defaultRange={{ from: defaultFrom, to: defaultTo }} onApply={handleApplyFilters} onReset={() => { handleResetFilters(); setShowFilter(false); }} onClose={() => setShowFilter(false)} />}
     </div>
   );
 }
 
-/** Modal responsif untuk Status + Range Tanggal (dengan state lokal & Apply/Cancel) */
-function FilterModal({
-  initial,
-  defaultRange,
-  onApply,
-  onReset,
-  onClose,
-}: {
-  initial: { status: string; from: string; to: string };
-  defaultRange: { from: string; to: string };
-  onApply: (payload: { status: string; from: string; to: string }) => void;
-  onReset: () => void;
-  onClose: () => void;
+// ===== Helper Functions & Components =====
+const compute = (o: ExtendedOrder, unitPrice: number) => {
+  const kg = Math.ceil(Number(o.jumlahKg ?? 0));
+  const baseOngkir = typeof o.hargaOngkir === 'number' ? o.hargaOngkir : kg * unitPrice;
+  const jastipMarkup = Number(o.hargaJastipMarkup ?? 0);
+  const baseJastip = Number(o.hargaJastip ?? 0);
+  const ongkirMarkup = Number(o.hargaOngkirMarkup ?? 0);
+  const totalPembayaran = jastipMarkup + ongkirMarkup;
+  const totalKeuntungan = (jastipMarkup + ongkirMarkup) - (baseOngkir + baseJastip);
+  return { kg, baseJastip, jastipMarkup, baseOngkir, ongkirMarkup, totalPembayaran, totalKeuntungan };
+};
+
+function ExpandableRow({ order, unitPrice, isExpanded, isSelected, onToggleExpand, onToggleSelect, onEdit, onDelete }: {
+  order: ExtendedOrder; unitPrice: number; isExpanded: boolean; isSelected: boolean;
+  onToggleExpand: () => void; onToggleSelect: () => void; onEdit: () => void; onDelete: () => void;
+}) {
+  const d = compute(order, unitPrice);
+  return (
+    <>
+      <tr className={`border-b border-slate-200 transition-colors ${isSelected ? 'bg-orange-50' : 'hover:bg-slate-50'}`}>
+        <td className="px-4 py-3"><input type="checkbox" checked={isSelected} onChange={onToggleSelect} /></td>
+        <td className="px-4 py-3 whitespace-nowrap text-slate-600">{order.no}</td>
+        <td className="px-4 py-3 whitespace-nowrap text-slate-600">{formatAndAddYear(order.tanggal)}</td>
+        <td className="px-4 py-3 text-slate-800 font-medium">{order.namaPelanggan}</td>
+        <td className="px-4 py-3 text-slate-700 max-w-xs truncate" title={order.namaBarang}>{order.namaBarang}</td>
+        <td className="px-4 py-3"><StatusPill status={String(order.status) || 'Belum Membayar'} /></td>
+        <td className="px-4 py-3 text-right font-semibold text-slate-800">{formatIDR(d.totalPembayaran)}</td>
+        <td className="px-4 py-3 text-right font-semibold text-emerald-600">{formatIDR(d.totalKeuntungan)}</td>
+        <td className="px-4 py-3">
+          <div className="flex items-center justify-center gap-1">
+            <Button variant="ghost" onClick={onEdit}>Edit</Button>
+            <Button variant="ghost" onClick={onToggleExpand} aria-label="Toggle Details">
+              <IconChevronDown className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+            </Button>
+          </div>
+        </td>
+      </tr>
+      {isExpanded && (
+        <tr className="bg-slate-50">
+          <td colSpan={9} className="p-0">
+            <div className="p-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 text-xs">
+              <div className="space-y-1"><div className="text-slate-500">Pengiriman</div><div className="font-medium text-slate-800">{order.pengiriman || '-'}</div></div>
+              <div className="space-y-1"><div className="text-slate-500">Kategori</div><div className="font-medium text-slate-800">{order.kategori || '-'}</div></div>
+              <div className="space-y-1"><div className="text-slate-500">Berat (ceil)</div><div className="font-medium text-slate-800">{d.kg} Kg</div></div>
+              <div className="space-y-1"><div className="text-slate-500">Harga Jastip</div><div className="font-medium text-slate-800">{formatIDR(d.baseJastip)}</div></div>
+              <div className="space-y-1"><div className="text-slate-500">Jastip Markup</div><div className="font-medium text-slate-800">{formatIDR(d.jastipMarkup)}</div></div>
+              <div className="space-y-1"><div className="text-slate-500">Harga Ongkir</div><div className="font-medium text-slate-800">{formatIDR(d.baseOngkir)}</div></div>
+              <div className="space-y-1"><div className="text-slate-500">Ongkir Markup</div><div className="font-medium text-slate-800">{formatIDR(d.ongkirMarkup)}</div></div>
+              <div className="col-span-2 lg:col-span-3 space-y-1"><div className="text-slate-500">Catatan</div><div className="font-medium text-slate-800">{order.catatan || '-'}</div></div>
+              <div className="self-end"><Button variant="danger-ghost" onClick={onDelete}>Hapus Pesanan</Button></div>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+// Re-styled FilterModal (same as previous example for consistency)
+function FilterModal({ initial, defaultRange, onApply, onReset, onClose }: {
+  initial: { status: string; from: string; to: string }; defaultRange: { from: string; to: string };
+  onApply: (payload: { status: string; from: string; to: string }) => void; onReset: () => void; onClose: () => void;
 }) {
   const [localStatus, setLocalStatus] = useState<string>(initial.status || '');
   const [localFrom, setLocalFrom] = useState<string>(initial.from || defaultRange.from);
   const [localTo, setLocalTo] = useState<string>(initial.to || defaultRange.to);
-
   const panelRef = useRef<HTMLDivElement>(null);
-
-  // Lock scroll saat modal open
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
-  }, []);
-
-  // ESC close
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
-  // Klik di luar panel untuk close
-  useEffect(() => {
-    const onClick = (e: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) onClose();
-    };
-    document.addEventListener('mousedown', onClick);
-    return () => document.removeEventListener('mousedown', onClick);
-  }, [onClose]);
-
+  useEffect(() => { const prev = document.body.style.overflow; document.body.style.overflow = 'hidden'; return () => { document.body.style.overflow = prev; }; }, []);
+  useEffect(() => { const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose(); document.addEventListener('keydown', onKey); return () => document.removeEventListener('keydown', onKey); }, [onClose]);
+  useEffect(() => { const onClick = (e: MouseEvent) => { if (panelRef.current && !panelRef.current.contains(e.target as Node)) onClose(); }; document.addEventListener('mousedown', onClick); return () => document.removeEventListener('mousedown', onClick); }, [onClose]);
   return (
-    <div
-      aria-modal="true"
-      role="dialog"
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
-    >
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/40" />
-
-      {/* Panel */}
-      <div
-        ref={panelRef}
-        className="relative w-full sm:w-[420px] max-w-full sm:max-w-[90vw] rounded-t-2xl sm:rounded-2xl bg-white shadow-xl ring-1 ring-[#0a2342]/10 p-4 sm:p-5 translate-y-0 sm:translate-y-0"
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between mb-3">
-          <div className="text-base sm:text-lg font-semibold text-[color:var(--navy,#0a2342)]">Filter</div>
-          <button
-            onClick={onClose}
-            className="text-sm text-neutral-500 hover:text-neutral-700"
-            aria-label="Tutup"
-          >
-            ✕
-          </button>
+    <div aria-modal="true" role="dialog" className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div ref={panelRef} className="relative w-full sm:w-[480px] max-w-full rounded-2xl bg-white shadow-xl ring-1 ring-slate-900/10 p-5 sm:p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="text-lg font-semibold text-slate-800">Filter Pesanan</div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600" aria-label="Tutup"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
         </div>
-
-        {/* Body */}
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div>
-            <div className="text-xs text-neutral-600 mb-1">Status</div>
-            <Select
-              value={localStatus}
-              onChange={(e) => setLocalStatus((e.target as HTMLSelectElement).value)}
-              className="w-full focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-            >
+            <label className="text-sm font-medium text-slate-700 mb-1.5 block">Status</label>
+            <Select value={localStatus} onChange={(e) => setLocalStatus((e.target as HTMLSelectElement).value)} className="w-full focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
               <option value="">Semua Status</option>
-              {['Belum Membayar', 'Pembayaran Selesai', 'Sedang Pengiriman', 'Sudah Diterima', 'Pending', 'Diproses', 'Selesai', 'Dibatalkan']
-                .map(s => <option key={s} value={s}>{s}</option>)}
+              {['Belum Membayar', 'Pembayaran Selesai', 'Sedang Pengiriman', 'Sudah Diterima', 'Pending', 'Diproses', 'Selesai', 'Dibatalkan'].map(s => <option key={s} value={s}>{s}</option>)}
             </Select>
           </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <div className="text-xs text-neutral-600 mb-1">Dari</div>
-              <Input
-                type="date"
-                value={localFrom}
-                onChange={(e) => setLocalFrom((e.target as HTMLInputElement).value)}
-                className="w-full focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                aria-label="Tanggal dari"
-              />
-            </div>
-            <div>
-              <div className="text-xs text-neutral-600 mb-1">Sampai</div>
-              <Input
-                type="date"
-                value={localTo}
-                onChange={(e) => setLocalTo((e.target as HTMLInputElement).value)}
-                className="w-full focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                aria-label="Tanggal sampai"
-              />
-            </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className="text-sm font-medium text-slate-700 mb-1.5 block">Dari Tanggal</label><Input type="date" value={localFrom} onChange={(e) => setLocalFrom((e.target as HTMLInputElement).value)} className="w-full focus:ring-2 focus:ring-orange-500 focus:border-orange-500" /></div>
+            <div><label className="text-sm font-medium text-slate-700 mb-1.5 block">Sampai Tanggal</label><Input type="date" value={localTo} onChange={(e) => setLocalTo((e.target as HTMLInputElement).value)} className="w-full focus:ring-2 focus:ring-orange-500 focus:border-orange-500" /></div>
           </div>
         </div>
-
-        {/* Footer */}
-        <div className="mt-4 sm:mt-5 flex items-center justify-between gap-2">
-          <Button
-            variant="ghost"
-            onClick={onReset}
-            className="text-[#0a2342] hover:bg-[#0a2342]/5"
-            title="Reset filter"
-          >
-            Reset
-          </Button>
-          <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              onClick={onClose}
-              className="text-[#0a2342] hover:bg-[#0a2342]/5"
-            >
-              Batal
-            </Button>
-            <Button
-              onClick={() => onApply({ status: localStatus, from: localFrom, to: localTo })}
-              className="bg-[#0a2342] hover:bg-[#081a31] text-white border border-[#0a2342]/20"
-            >
-              Terapkan
-            </Button>
-          </div>
+        <div className="mt-6 flex items-center justify-between gap-2">
+          <Button variant="ghost" onClick={onReset}>Reset Filter</Button>
+          <div className="flex gap-2"><Button variant="outline" onClick={onClose}>Batal</Button><Button onClick={() => onApply({ status: localStatus, from: localFrom, to: localTo })} className="bg-slate-800 hover:bg-slate-900 text-white">Terapkan</Button></div>
         </div>
       </div>
     </div>

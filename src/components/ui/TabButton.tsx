@@ -8,7 +8,7 @@ export function TabButton({
 }: {
   current: string;
   setTab: (t: any) => void;
-  id: 'dashboard' | 'orders' | 'customers' | 'calculator';
+  id: 'dashboard' | 'orders' | 'customers' | 'calculator' | 'cash';
   children: React.ReactNode;
 }) {
   const active = current === id;

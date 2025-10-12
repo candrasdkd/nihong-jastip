@@ -1,7 +1,7 @@
 // Button.tsx
 import React from 'react';
 
-type Variant = 'primary' | 'ghost' | 'danger' | 'success' | 'navy' | 'outline';
+type Variant = 'primary' | 'danger-ghost' | 'success-ghost' | 'ghost' | 'danger' | 'success' | 'navy' | 'outline';
 type ButtonProps = Omit<
   React.ButtonHTMLAttributes<HTMLButtonElement>,
   'type' | 'className' | 'disabled' | 'onClick'
@@ -29,6 +29,10 @@ export function Button({
     primary:
       'bg-orange-600 text-white hover:bg-orange-700 focus:ring-orange-400',
     // ghost = light neutral (override per-use untuk navy text jika perlu)
+    "danger-ghost":
+      'bg-white text-red-600 hover:bg-red-50 focus:ring-red-400 border border-transparent',
+    "success-ghost":
+      'bg-white text-emerald-600 hover:bg-emerald-50 focus:ring-emerald-400 border border-transparent',
     ghost:
       'bg-white text-neutral-800 hover:bg-neutral-100 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800 focus:ring-neutral-400 border border-transparent',
     // solid NAVY
