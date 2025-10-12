@@ -16,6 +16,7 @@ import {
   updateOrder,
 } from '../services/ordersFirebase';
 import { formatAndAddYear } from '../utils/helpers';
+import { ORDER_STATUSES } from '../utils/constants';
 
 // ===== Type Definitions =====
 type ExtendedOrder = Order & Partial<{
@@ -171,7 +172,8 @@ export function OrdersPage({ orders, setOrders, customers, unitPrice }: {
                 <IconInvoice className="w-4 h-4" />
                 <span>Invoice {selectedIds.length > 0 ? `(${selectedIds.length})` : ''}</span>
               </Button>
-              <Button onClick={() => { setEditing(null); setShowForm(true); }} className="bg-slate-800 hover:bg-slate-900 text-white flex items-center gap-1.5">
+              {/* ===== MODIFIED: Button is now hidden on small screens ===== */}
+              <Button onClick={() => { setEditing(null); setShowForm(true); }} className="bg-slate-800 hover:bg-slate-900 text-white hidden sm:flex items-center gap-1.5">
                 <IconPlus className="w-4 h-4" />
                 <span>Tambah Pesanan</span>
               </Button>
@@ -239,7 +241,6 @@ export function OrdersPage({ orders, setOrders, customers, unitPrice }: {
                     </div>
                     <p className="mt-3 text-slate-700">{o.namaBarang}</p>
 
-                    {/* === NEW SECTION FOR DETAILS === */}
                     <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-3 text-sm">
                       <div>
                         <div className="text-xs text-slate-500">Keuntungan</div>
@@ -250,7 +251,6 @@ export function OrdersPage({ orders, setOrders, customers, unitPrice }: {
                         <div className="font-semibold text-slate-800">{d.kg} Kg</div>
                       </div>
                     </div>
-                    {/* === END OF NEW SECTION === */}
 
                   </div>
                   <div className="bg-slate-50 px-4 py-2 flex gap-2 border-t border-slate-200">
@@ -269,6 +269,15 @@ export function OrdersPage({ orders, setOrders, customers, unitPrice }: {
       {showForm && <OrderFormModal customers={customers} initial={editing || undefined} onClose={() => setShowForm(false)} onSubmit={async (val) => { const dto = fromExtended(val as any); if (editing?.id) await updateOrder(editing.id, dto, unitPrice); else await createOrder(dto, unitPrice); setShowForm(false); }} existing={orders} unitPrice={unitPrice} />}
       {showInvoice.show && showInvoice.order && <InvoiceModal order={showInvoice.order} orders={orders} itemIds={showInvoice.itemIds} customer={customers.find((c) => c.nama === showInvoice.order!.namaPelanggan)} onClose={() => setShowInvoice({ show: false })} unitPrice={unitPrice} />}
       {showFilter && <FilterModal initial={{ status: statusFilter, from: dateFrom, to: dateTo }} defaultRange={{ from: defaultFrom, to: defaultTo }} onApply={handleApplyFilters} onReset={() => { handleResetFilters(); setShowFilter(false); }} onClose={() => setShowFilter(false)} />}
+
+      {/* ===== NEW: Floating Action Button for Mobile ===== */}
+      <Button
+        onClick={() => { setEditing(null); setShowForm(true); }}
+        className="sm:hidden fixed bottom-20 right-6 z-40 bg-slate-800 hover:bg-slate-900 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg transition-transform active:scale-95"
+        aria-label="Tambah Pesanan Baru"
+      >
+        <IconPlus className="w-6 h-6" />
+      </Button>
     </div>
   );
 }
@@ -356,13 +365,11 @@ function FilterModal({ initial, defaultRange, onApply, onReset, onClose }: {
             <label className="text-sm font-medium text-slate-700 mb-1.5 block">Status</label>
             <Select value={localStatus} onChange={(e) => setLocalStatus((e.target as HTMLSelectElement).value)} className="w-full focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
               <option value="">Semua Status</option>
-              {['Belum Membayar', 'Pembayaran Selesai', 'Sedang Pengiriman', 'Sudah Diterima', 'Pending', 'Diproses', 'Selesai', 'Dibatalkan'].map(s => <option key={s} value={s}>{s}</option>)}
+              {ORDER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
             </Select>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className="text-sm font-medium text-slate-700 mb-1.5 block">Dari Tanggal</label><Input type="date" value={localFrom} onChange={(e) => setLocalFrom((e.target as HTMLInputElement).value)} className="w-full focus:ring-2 focus:ring-orange-500 focus:border-orange-500" /></div>
-            <div><label className="text-sm font-medium text-slate-700 mb-1.5 block">Sampai Tanggal</label><Input type="date" value={localTo} onChange={(e) => setLocalTo((e.target as HTMLInputElement).value)} className="w-full focus:ring-2 focus:ring-orange-500 focus:border-orange-500" /></div>
-          </div>
+          <div><label className="text-sm font-medium text-slate-700 mb-1.5 block">Dari Tanggal</label><Input type="date" value={localFrom} onChange={(e) => setLocalFrom((e.target as HTMLInputElement).value)} className="w-full focus:ring-2 focus:ring-orange-500 focus:border-orange-500" /></div>
+          <div><label className="text-sm font-medium text-slate-700 mb-1.5 block">Sampai Tanggal</label><Input type="date" value={localTo} onChange={(e) => setLocalTo((e.target as HTMLInputElement).value)} className="w-full focus:ring-2 focus:ring-orange-500 focus:border-orange-500" /></div>
         </div>
         <div className="mt-6 flex items-center justify-between gap-2">
           <Button variant="ghost" onClick={onReset}>Reset Filter</Button>

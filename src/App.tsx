@@ -114,7 +114,7 @@ export default function App() {
       </header>
 
       {/* Tambah padding bawah agar tidak ketutup bottom tab di mobile */}
-      <main className="max-w-7xl mx-auto px-4 py-6 pb-24 sm:pb-0">
+      <main className="max-w-7xl mx-auto pb-20 sm:pb-0">
         {tab === 'dashboard' && <Dashboard orders={orders} customers={customers} />}
         {/* Saat tab Orders dibuka, komponen OrdersPage yang akan subscribe + push setOrders sesuai filter */}
         {tab === 'orders' && <OrdersPage customers={customers} orders={orders} setOrders={setOrders} unitPrice={unitPrice} />}

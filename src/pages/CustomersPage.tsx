@@ -125,9 +125,10 @@ export function CustomersPage() {
               onChange={(e) => setQ(e.target.value)}
               className="w-full sm:w-auto sm:min-w-[300px] lg:min-w-[400px] focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
             />
+            {/* ===== MODIFIED: Button is now hidden on small screens ===== */}
             <Button
               onClick={() => { setEditing(null); setShowForm(true); }}
-              className="bg-slate-800 hover:bg-slate-900 text-white flex items-center gap-1.5"
+              className="bg-slate-800 hover:bg-slate-900 text-white hidden sm:flex items-center gap-1.5"
             >
               <IconUserPlus className="w-4 h-4" />
               <span>Tambah Pelanggan</span>
@@ -233,6 +234,15 @@ export function CustomersPage() {
           }}
         />
       )}
+
+      {/* ===== NEW: Floating Action Button for Mobile ===== */}
+      <Button
+        onClick={() => { setEditing(null); setShowForm(true); }}
+        className="sm:hidden fixed bottom-20 right-6 z-40 bg-slate-800 hover:bg-slate-900 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg transition-transform active:scale-95"
+        aria-label="Tambah Pelanggan Baru"
+      >
+        <IconUserPlus className="w-6 h-6" />
+      </Button>
     </div>
   );
 }

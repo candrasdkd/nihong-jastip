@@ -225,10 +225,11 @@ export function LedgerPage() {
                                     </span>
                                 )}
                             </Button>
+                            {/* ===== MODIFIED: Button is now hidden on small screens ===== */}
                             <Button
                                 onClick={() => setShowForm({ open: true, editing: null })}
                                 variant='navy'
-                                className="hover:bg-slate-900 text-white flex items-center gap-1.5"
+                                className="hover:bg-slate-900 text-white hidden sm:flex items-center gap-1.5"
                             >
                                 <IconPlus className="w-4 h-4" />
                                 <span>Catat Transaksi</span>
@@ -334,6 +335,15 @@ export function LedgerPage() {
                     onSubmit={handleSubmitForm}
                 />
             )}
+
+            {/* ===== NEW: Floating Action Button for Mobile ===== */}
+            <Button
+                onClick={() => setShowForm({ open: true, editing: null })}
+                className="sm:hidden fixed bottom-20 right-6 z-40 bg-slate-800 hover:bg-slate-900 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg transition-transform active:scale-95"
+                aria-label="Catat Transaksi Baru"
+            >
+                <IconPlus className="w-6 h-6" />
+            </Button>
         </div>
     );
 }
@@ -389,16 +399,13 @@ function FilterModal({
                             {defaults.categories.map((c) => <option key={c} value={c}>{c}</option>)}
                         </Select>
                     </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="text-sm font-medium text-slate-700 mb-1.5 block">Dari Tanggal</label>
-                            <Input type="date" value={localFrom} onChange={(e) => setLocalFrom((e.target as HTMLInputElement).value)} className="w-full focus:ring-2 focus:ring-orange-500 focus:border-orange-500" />
-                        </div>
-                        <div>
-                            <label className="text-sm font-medium text-slate-700 mb-1.5 block">Sampai Tanggal</label>
-                            <Input type="date" value={localTo} onChange={(e) => setLocalTo((e.target as HTMLInputElement).value)} className="w-full focus:ring-2 focus:ring-orange-500 focus:border-orange-500" />
-                        </div>
+                    <div>
+                        <label className="text-sm font-medium text-slate-700 mb-1.5 block">Dari Tanggal</label>
+                        <Input type="date" value={localFrom} onChange={(e) => setLocalFrom((e.target as HTMLInputElement).value)} className="w-full focus:ring-2 focus:ring-orange-500 focus:border-orange-500" />
+                    </div>
+                    <div>
+                        <label className="text-sm font-medium text-slate-700 mb-1.5 block">Sampai Tanggal</label>
+                        <Input type="date" value={localTo} onChange={(e) => setLocalTo((e.target as HTMLInputElement).value)} className="w-full focus:ring-2 focus:ring-orange-500 focus:border-orange-500" />
                     </div>
                 </div>
 

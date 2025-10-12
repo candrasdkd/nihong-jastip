@@ -8,6 +8,7 @@ import { formatIDR } from '../utils/format';
 import SearchableSelect from './ui/SearchableSelect';
 import { Select } from './ui/Select';
 import { RupiahInput } from './ui/RupiahInput';
+import { CATEGORY_OPTIONS } from '../utils/constants';
 
 const STATUS_BARU = ['Belum Membayar', 'Pembayaran Selesai', 'Sedang Pengiriman', 'Sudah Diterima'] as const;
 const STATUS_LAMA: OrderStatus[] = ['Pending', 'Diproses', 'Selesai', 'Dibatalkan'];
@@ -158,7 +159,7 @@ export function OrderFormModal({
                   onChange={(e) => setKategori(e.target.value)}
                   className="focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                 >
-                  {['Makanan', 'Minuman', 'Kecantikan', 'Elektronik', 'Lainnya'].map(k => (
+                  {CATEGORY_OPTIONS.map(k => (
                     <option key={k} value={k}>{k}</option>
                   ))}
                 </Select>
