@@ -20,83 +20,11 @@ import {
     type QueryConstraint,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { OrderStatus } from '../types';
-
-/** Firestore schema (requested):
- * no , tanggal, idPelanggan, namaPelanggan, namaBarang, kategori, pengiriman,
- * jumlahKg, kgCeil, hargaJastip, hargaJastipMarkup, hargaOngkir, hargaOngkirMarkup,
- * totalPembayaran, totalKeuntungan, status, catatan
- */
-
-export type OrderDoc = {
-    id: string;
-    no: string;
-    tanggal: string; // format dianjurkan: 'yyyy-MM-dd' agar range query & sorting valid
-    idPelanggan: string;
-    namaPelanggan: string;
-    namaBarang: string;
-    kategori: string;
-    pengiriman?: string;
-    jumlahKg: number;
-    kgCeil: number;
-    hargaJastip: number;
-    hargaJastipMarkup: number;
-    hargaOngkir: number;
-    hargaOngkirMarkup: number;
-    totalPembayaran: number;
-    totalKeuntungan: number;
-    status: OrderStatus; // 'Belum Membayar' | 'Pembayaran Selesai' | ...
-    catatan?: string;
-    createdAt?: any;
-    updatedAt?: any;
-};
+import { OrderDoc, OrderStatus, SubscribeOpts } from '../types';
+import { computeDerived, endOfMonth, normalizeTanggalString, startOfMonth, toInputDate } from '../utils/helpers';
 
 const ORDERS = collection(db, 'orders');
 
-// ---- helpers --------------------------------------------------------------
-function ceilKg(jumlahKg?: number) {
-    return Math.ceil(Number(jumlahKg ?? 0));
-}
-
-function computeDerived(input: Partial<OrderDoc>, unitPrice: number) {
-    const kgCeil = ceilKg(input.jumlahKg);
-    const baseOngkir =
-        typeof input.hargaOngkir === 'number' ? input.hargaOngkir : kgCeil * unitPrice;
-    const baseJastip = Number(input.hargaJastip ?? 0);
-    const jastipMarkup = Number(input.hargaJastipMarkup ?? 0);
-    const ongkirMarkup = Number(input.hargaOngkirMarkup ?? 0);
-    const totalPembayaran = baseJastip + baseOngkir;
-    const totalKeuntungan = jastipMarkup + ongkirMarkup - (baseOngkir + baseJastip);
-    return {
-        kgCeil,
-        baseOngkir,
-        baseJastip,
-        jastipMarkup,
-        ongkirMarkup,
-        totalPembayaran,
-        totalKeuntungan,
-    };
-}
-
-// Normalisasi tanggal ke 'yyyy-MM-dd' bila memungkinkan
-function toInputDate(d: Date) {
-    const iso = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString();
-    return iso.slice(0, 10);
-}
-function startOfMonth(d: Date) {
-    return new Date(d.getFullYear(), d.getMonth(), 1);
-}
-function endOfMonth(d: Date) {
-    return new Date(d.getFullYear(), d.getMonth() + 1, 0);
-}
-function normalizeTanggalString(v?: string) {
-    if (!v) return '';
-    // Jika sudah 'yyyy-MM-dd' biarkan
-    if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
-    const d = new Date(v);
-    if (!Number.isNaN(d.getTime())) return toInputDate(d);
-    return String(v); // fallback apa adanya (range bisa tidak akurat jika bukan yyyy-MM-dd)
-}
 
 // Normalize + compute before write
 function prepareForWrite(
@@ -122,6 +50,7 @@ function prepareForWrite(
         totalKeuntungan: d.totalKeuntungan,
         status: String(raw.status ?? 'Belum Membayar'),
         catatan: raw.catatan ?? '',
+        tipeNominal: raw.tipeNominal ?? 'IDR',
         updatedAt: serverTimestamp(),
         // createdAt di-set saat create
     };
@@ -136,6 +65,8 @@ export async function createOrder(raw: Partial<OrderDoc>, unitPrice: number) {
 }
 
 export async function updateOrder(id: string, raw: Partial<OrderDoc>, unitPrice: number) {
+    console.log('raw', raw);
+
     const ref = doc(db, 'orders', id);
     const payload = prepareForWrite(raw, unitPrice);
     await updateDoc(ref, payload);
@@ -159,15 +90,6 @@ export async function deleteOrder(id: string) {
 }
 
 // ---- Realtime subscription -------------------------------------------------
-// NOTE: Firestore range filter di-string 'tanggal' akan valid jika format konsisten 'yyyy-MM-dd'
-export type SubscribeOpts = {
-    q?: string;                 // (belum diimplementasi server-side; gunakan client-side jika perlu)
-    status?: string;
-    fromInput?: string;         // yyyy-MM-dd (inklusif, 00:00)
-    toInput?: string;           // yyyy-MM-dd (inklusif, 23:59:59)
-    sort?: 'asc' | 'desc';      // default 'desc'
-    limit?: number;             // default 250
-};
 
 // Overload: kompatibel lama (tanpa opts) & baru (dengan opts)
 export function subscribeOrders(cb: (rows: OrderDoc[]) => void): Unsubscribe;
@@ -261,5 +183,29 @@ export function fromExtended(ui: ExtendedOrder): OrderDoc {
         totalKeuntungan: ui.totalKeuntungan,
         status: ui.status as OrderStatus,
         catatan: ui.catatan,
+        tipeNominal: ui.tipeNominal,
     };
+}
+
+export async function addTipeNominalToAllOrders(
+    tipeNominal: string
+) {
+    const snap = await getDocs(ORDERS)
+
+    const promises: Promise<void>[] = []
+
+    snap.forEach((d) => {
+        const ref = doc(db, 'orders', d.id)
+
+        promises.push(
+            updateDoc(ref, {
+                tipeNominal,
+                updatedAt: serverTimestamp(),
+            })
+        )
+    })
+
+    await Promise.all(promises)
+
+    console.log(`✔ ${snap.size} orders berhasil ditambahkan tipeNominal`)
 }

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Customer, Order } from '../types';
-import { formatIDR } from '../utils/format';
+import { Customer, ExtendedOrder, Order } from '../types';
+import { formatCurrency } from '../utils/format';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
@@ -8,6 +8,7 @@ import { Card } from '../components/ui/Card';
 import { OrderFormModal } from '../components/OrderFormModal';
 import { InvoiceModal } from '../components/InvoiceModal';
 import {
+  addTipeNominalToAllOrders,
   createOrder,
   deleteOrder,
   fromExtended,
@@ -15,26 +16,9 @@ import {
   toExtended,
   updateOrder,
 } from '../services/ordersFirebase';
-import { formatAndAddYear } from '../utils/helpers';
+import { endOfMonth, formatAndAddYear, startOfMonth, toInputDate } from '../utils/helpers';
 import { ORDER_STATUSES } from '../utils/constants';
 
-// ===== Type Definitions =====
-type ExtendedOrder = Order & Partial<{
-  pengiriman: string;
-  catatan: string;
-  hargaJastip: number;
-  hargaJastipMarkup: number;
-  hargaOngkir: number;
-  hargaOngkirMarkup: number;
-}>;
-
-// ===== Helper Functions =====
-function toInputDate(d: Date) {
-  const iso = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString();
-  return iso.slice(0, 10);
-}
-function startOfMonth(d: Date) { return new Date(d.getFullYear(), d.getMonth(), 1); }
-function endOfMonth(d: Date) { return new Date(d.getFullYear(), d.getMonth() + 1, 0); }
 
 // ===== UI Components (New & Refined) =====
 
@@ -58,8 +42,6 @@ const IconPlus = (props: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://w
 const IconFilter = (props: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>);
 const IconInvoice = (props: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><line x1="10" y1="9" x2="8" y2="9" /></svg>);
 const IconChevronDown = (props: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m6 9 6 6 6-6" /></svg>);
-const IconWallet = (props: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" /><path d="M3 5v14a2 2 0 0 0 2 2h15" /></svg>);
-const IconScale = (props: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m16 16 3-8 3 8c-2 1-4 1-6 0" /><path d="m2 16 3-8 3 8c-2 1-4 1-6 0" /><path d="M7 21h10" /><path d="M12 3v18" /><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2" /></svg>);
 
 // ===== Main Page Component =====
 export function OrdersPage({ orders, setOrders, customers, unitPrice }: {
@@ -96,6 +78,7 @@ export function OrdersPage({ orders, setOrders, customers, unitPrice }: {
 
   // ===== Data Fetching & Subscription =====
   useEffect(() => {
+    // addTipeNominalToAllOrders('IDR');
     const unsub = subscribeOrders({
       q, status: statusFilter || '', fromInput: dateFrom || '',
       toInput: dateTo || '', limit: 250, sort: 'desc',
@@ -235,7 +218,7 @@ export function OrdersPage({ orders, setOrders, customers, unitPrice }: {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="font-bold text-lg text-slate-800 whitespace-nowrap">{formatIDR(d.totalPembayaran)}</p>
+                        <p className="font-bold text-lg text-slate-800 whitespace-nowrap">{formatCurrency(d.totalPembayaran, d.currency)}</p>
                         <StatusPill status={String(o.status) || 'Belum Membayar'} />
                       </div>
                     </div>
@@ -244,7 +227,7 @@ export function OrdersPage({ orders, setOrders, customers, unitPrice }: {
                     <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-3 text-sm">
                       <div>
                         <div className="text-xs text-slate-500">Keuntungan</div>
-                        <div className="font-semibold text-emerald-600">{formatIDR(d.totalKeuntungan)}</div>
+                        <div className="font-semibold text-emerald-600">{formatCurrency(d.totalKeuntungan, d.currency)}</div>
                       </div>
                       <div>
                         <div className="text-xs text-slate-500">Berat</div>
@@ -285,13 +268,27 @@ export function OrdersPage({ orders, setOrders, customers, unitPrice }: {
 // ===== Helper Functions & Components =====
 const compute = (o: ExtendedOrder, unitPrice: number) => {
   const kg = Math.ceil(Number(o.jumlahKg ?? 0));
+  // Ambil currency dari order, default ke IDR jika tidak ada
+  const currency = o.tipeNominal || 'IDR';
+
   const baseOngkir = typeof o.hargaOngkir === 'number' ? o.hargaOngkir : kg * unitPrice;
   const jastipMarkup = Number(o.hargaJastipMarkup ?? 0);
   const baseJastip = Number(o.hargaJastip ?? 0);
   const ongkirMarkup = Number(o.hargaOngkirMarkup ?? 0);
+
   const totalPembayaran = jastipMarkup + ongkirMarkup;
   const totalKeuntungan = (jastipMarkup + ongkirMarkup) - (baseOngkir + baseJastip);
-  return { kg, baseJastip, jastipMarkup, baseOngkir, ongkirMarkup, totalPembayaran, totalKeuntungan };
+
+  return {
+    kg,
+    baseJastip,
+    jastipMarkup,
+    baseOngkir,
+    ongkirMarkup,
+    totalPembayaran,
+    totalKeuntungan,
+    currency
+  };
 };
 
 function ExpandableRow({ order, unitPrice, isExpanded, isSelected, onToggleExpand, onToggleSelect, onEdit, onDelete }: {
@@ -308,8 +305,8 @@ function ExpandableRow({ order, unitPrice, isExpanded, isSelected, onToggleExpan
         <td className="px-4 py-3 text-slate-800 font-medium">{order.namaPelanggan}</td>
         <td className="px-4 py-3 text-slate-700 max-w-xs truncate" title={order.namaBarang}>{order.namaBarang}</td>
         <td className="px-4 py-3"><StatusPill status={String(order.status) || 'Belum Membayar'} /></td>
-        <td className="px-4 py-3 text-right font-semibold text-slate-800">{formatIDR(d.totalPembayaran)}</td>
-        <td className="px-4 py-3 text-right font-semibold text-emerald-600">{formatIDR(d.totalKeuntungan)}</td>
+        <td className="px-4 py-3 text-right font-semibold text-slate-800">{formatCurrency(d.totalPembayaran, d.currency)}</td>
+        <td className="px-4 py-3 text-right font-semibold text-emerald-600">{formatCurrency(d.totalKeuntungan, d.currency)}</td>
         <td className="px-4 py-3">
           <div className="flex items-center justify-center gap-1">
             <Button variant="ghost" onClick={onEdit}>Edit</Button>
@@ -326,10 +323,10 @@ function ExpandableRow({ order, unitPrice, isExpanded, isSelected, onToggleExpan
               <div className="space-y-1"><div className="text-slate-500">Pengiriman</div><div className="font-medium text-slate-800">{order.pengiriman || '-'}</div></div>
               <div className="space-y-1"><div className="text-slate-500">Kategori</div><div className="font-medium text-slate-800">{order.kategori || '-'}</div></div>
               <div className="space-y-1"><div className="text-slate-500">Berat (ceil)</div><div className="font-medium text-slate-800">{d.kg} Kg</div></div>
-              <div className="space-y-1"><div className="text-slate-500">Harga Jastip</div><div className="font-medium text-slate-800">{formatIDR(d.baseJastip)}</div></div>
-              <div className="space-y-1"><div className="text-slate-500">Jastip Markup</div><div className="font-medium text-slate-800">{formatIDR(d.jastipMarkup)}</div></div>
-              <div className="space-y-1"><div className="text-slate-500">Harga Ongkir</div><div className="font-medium text-slate-800">{formatIDR(d.baseOngkir)}</div></div>
-              <div className="space-y-1"><div className="text-slate-500">Ongkir Markup</div><div className="font-medium text-slate-800">{formatIDR(d.ongkirMarkup)}</div></div>
+              <div className="space-y-1"><div className="text-slate-500">Harga Jastip</div><div className="font-medium text-slate-800">{formatCurrency(d.baseJastip)}</div></div>
+              <div className="space-y-1"><div className="text-slate-500">Jastip Markup</div><div className="font-medium text-slate-800">{formatCurrency(d.jastipMarkup)}</div></div>
+              <div className="space-y-1"><div className="text-slate-500">Harga Ongkir</div><div className="font-medium text-slate-800">{formatCurrency(d.baseOngkir)}</div></div>
+              <div className="space-y-1"><div className="text-slate-500">Ongkir Markup</div><div className="font-medium text-slate-800">{formatCurrency(d.ongkirMarkup)}</div></div>
               <div className="col-span-2 lg:col-span-3 space-y-1"><div className="text-slate-500">Catatan</div><div className="font-medium text-slate-800">{order.catatan || '-'}</div></div>
               <div className="self-end"><Button variant="danger-ghost" onClick={onDelete}>Hapus Pesanan</Button></div>
             </div>

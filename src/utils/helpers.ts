@@ -1,4 +1,4 @@
-import { Order } from '../types';
+import { ExtendedOrder, Order, OrderDoc } from '../types';
 
 export const STORAGE_KEYS = { orders: 'jastip_orders_v1', customers: 'jastip_customers_v1', unitPrice: 'jastip_unit_price_v1' };
 export const MONTH_LABEL_ID = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
@@ -31,3 +31,68 @@ export const formatAndAddYear = (dateString: string) => {
   return new Intl.DateTimeFormat('id-ID', options).format(date);
 };
 
+export function normalizeTanggalString(v?: string) {
+  if (!v) return '';
+  // Jika sudah 'yyyy-MM-dd' biarkan
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  const d = new Date(v);
+  if (!Number.isNaN(d.getTime())) return toInputDate(d);
+  return String(v); // fallback apa adanya (range bisa tidak akurat jika bukan yyyy-MM-dd)
+}
+
+export function toInputDate(d: Date) {
+  const iso = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString();
+  return iso.slice(0, 10);
+}
+export function startOfMonth(d: Date) { return new Date(d.getFullYear(), d.getMonth(), 1); }
+export function endOfMonth(d: Date) { return new Date(d.getFullYear(), d.getMonth() + 1, 0); }
+
+// ---- helpers --------------------------------------------------------------
+export function ceilKg(jumlahKg?: number) {
+  return Math.ceil(Number(jumlahKg ?? 0));
+}
+
+export function computeDerived(input: Partial<OrderDoc>, unitPrice: number) {
+  const kgCeil = ceilKg(input.jumlahKg);
+  const baseOngkir =
+    typeof input.hargaOngkir === 'number' ? input.hargaOngkir : kgCeil * unitPrice;
+  const baseJastip = Number(input.hargaJastip ?? 0);
+  const jastipMarkup = Number(input.hargaJastipMarkup ?? 0);
+  const ongkirMarkup = Number(input.hargaOngkirMarkup ?? 0);
+  const totalPembayaran = baseJastip + baseOngkir;
+  const totalKeuntungan = jastipMarkup + ongkirMarkup - (baseOngkir + baseJastip);
+  return {
+    kgCeil,
+    baseOngkir,
+    baseJastip,
+    jastipMarkup,
+    ongkirMarkup,
+    totalPembayaran,
+    totalKeuntungan,
+  };
+}
+
+export const compute = (o: ExtendedOrder, unitPrice: number) => {
+  const kg = Math.ceil(Number(o.jumlahKg ?? 0));
+  // Ambil currency dari order, default ke IDR jika tidak ada
+  const currency = o.tipeNominal || 'IDR';
+
+  const baseOngkir = typeof o.hargaOngkir === 'number' ? o.hargaOngkir : kg * unitPrice;
+  const jastipMarkup = Number(o.hargaJastipMarkup ?? 0);
+  const baseJastip = Number(o.hargaJastip ?? 0);
+  const ongkirMarkup = Number(o.hargaOngkirMarkup ?? 0);
+
+  const totalPembayaran = jastipMarkup + ongkirMarkup;
+  const totalKeuntungan = (jastipMarkup + ongkirMarkup) - (baseOngkir + baseJastip);
+
+  return {
+    kg,
+    baseJastip,
+    jastipMarkup,
+    baseOngkir,
+    ongkirMarkup,
+    totalPembayaran,
+    totalKeuntungan,
+    currency
+  };
+};

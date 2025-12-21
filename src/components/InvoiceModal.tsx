@@ -1,23 +1,13 @@
 import React, { useMemo, useRef } from 'react';
 import jsPDF from 'jspdf';
-import { Customer, Order } from '../types';
-import { formatIDR } from '../utils/format';
+import { Customer, ExtendedOrder, Order } from '../types';
+import { formatCurrency } from '../utils/format';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import stampImage from '../assets/cap.png';
-import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
 
 // Selaras dengan OrdersPage: dukung kolom markup dan ongkir
-export type ExtendedOrder = Order & Partial<{
-  pengiriman: string;
-  catatan: string;
-  hargaJastip: number;
-  hargaJastipMarkup: number;
-  hargaOngkir: number;
-  hargaOngkirMarkup: number;
-  jumlahKg: number | string;
-}>;
 
 function compute(o: ExtendedOrder, unitPrice: number) {
   const kg = Math.ceil(Number(o.jumlahKg ?? 0));
@@ -25,11 +15,11 @@ function compute(o: ExtendedOrder, unitPrice: number) {
   const jastipMarkup = Number(o.hargaJastipMarkup ?? 0);
   const baseOngkir = Number(o.hargaOngkir ?? 0);
   const ongkirMarkup = Number(o.hargaOngkirMarkup ?? 0);
-
+  const currency = o.tipeNominal || 'IDR';
   const lineTotal = jastipMarkup + ongkirMarkup;
   const keuntungan = jastipMarkup + ongkirMarkup;
 
-  return { kg, baseJastip, jastipMarkup, baseOngkir, ongkirMarkup, lineTotal, keuntungan };
+  return { kg, baseJastip, jastipMarkup, baseOngkir, ongkirMarkup, lineTotal, keuntungan, currency };
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -78,9 +68,10 @@ export function InvoiceModal({
         const d = compute(it, unitPrice);
         acc.subtotal += d.lineTotal;
         acc.totalKeuntungan += d.keuntungan;
+        if (!acc.currency) acc.currency = d.currency;
         return acc;
       },
-      { subtotal: 0, totalKeuntungan: 0 }
+      { subtotal: 0, totalKeuntungan: 0, currency: '' }
     );
   }, [items, unitPrice]);
 
@@ -90,8 +81,8 @@ export function InvoiceModal({
       .map((it) => {
         const d = compute(it, unitPrice);
         const parts = [
-          d.jastipMarkup ? `Jastip / kg ${formatIDR(d.jastipMarkup / d.kg)}` : '',
-          d.ongkirMarkup ? `Ongkir / kg ${formatIDR(d.ongkirMarkup / d.kg)}` : '',
+          d.jastipMarkup ? `Jastip / kg ${formatCurrency(d.jastipMarkup / d.kg, d.currency)}` : '',
+          d.ongkirMarkup ? `Ongkir / kg ${formatCurrency(d.ongkirMarkup / d.kg, d.currency)}` : '',
         ].filter(Boolean).join(' + ');
         return `${it.namaBarang || '-'}: ${parts || '-'}`;
       })
@@ -250,7 +241,7 @@ export function InvoiceModal({
                           <td className="px-3.5 py-2.5">{it.namaBarang || '-'}</td>
                           <td className="px-3.5 py-2.5 text-neutral-700">{it.kategori || '-'}</td>
                           <td className="px-3.5 py-2.5 text-right tabular-nums">{d.kg}</td>
-                          <td className="px-3.5 py-2.5 text-right tabular-nums font-medium">{formatIDR(d.lineTotal)}</td>
+                          <td className="px-3.5 py-2.5 text-right tabular-nums font-medium">{formatCurrency(d.lineTotal, d.currency)}</td>
                         </tr>
                       );
                     })}
@@ -280,16 +271,16 @@ export function InvoiceModal({
                 <div className="rounded-xl ring-1 ring-neutral-200 bg-gradient-to-br from-neutral-50 to-neutral-100 p-4">
                   <div className="flex items-center justify-between py-1">
                     <span className="text-sm text-neutral-600">Total</span>
-                    <span className="font-medium tabular-nums">{formatIDR(totals.subtotal)}</span>
+                    <span className="font-medium tabular-nums">{formatCurrency(totals.subtotal, totals.currency)}</span>
                   </div>
                   <div className="flex items-center justify-between py-1">
                     <span className="text-sm text-neutral-600">Biaya Admin</span>
-                    <span className="font-medium tabular-nums">{formatIDR(adminFee)}</span>
+                    <span className="font-medium tabular-nums">{formatCurrency(adminFee, totals.currency)}</span>
                   </div>
                   <div className="border-t border-neutral-200 my-2" />
                   <div className="flex items-center justify-between py-1">
                     <span className="font-semibold text-[color:var(--navy,#0a2342)]">Total</span>
-                    <span className="font-bold text-[color:var(--navy,#0a2342)] tabular-nums">{formatIDR(grandTotal)}</span>
+                    <span className="font-bold text-[color:var(--navy,#0a2342)] tabular-nums">{formatCurrency(grandTotal, totals.currency)}</span>
                   </div>
                 </div>
               </div>

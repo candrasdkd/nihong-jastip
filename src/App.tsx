@@ -3,11 +3,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Dashboard } from './pages/Dashboard';
 import { OrdersPage } from './pages/OrdersPage';
 import { CustomersPage } from './pages/CustomersPage';
-import { CalculatorCard } from './pages/CalculatorCard';
 import { LedgerPage } from './pages/LedgerPage';
 import { Customer, Order } from './types';
-import { formatIDR } from './utils/format';
-import { Button } from './components/ui/Button';
 import { TabButton } from './components/ui/TabButton';
 import { UnitPriceModal } from './components/UnitPriceModal';
 import { BottomTabBar } from './components/BottomTabBar';
@@ -99,16 +96,8 @@ export default function App() {
               <TabButton current={tab} setTab={setTab} id="dashboard">Dashboard</TabButton>
               <TabButton current={tab} setTab={setTab} id="orders">Pesanan</TabButton>
               <TabButton current={tab} setTab={setTab} id="customers">Konsumen</TabButton>
-              <TabButton current={tab} setTab={setTab} id="calculator">Kalkulator</TabButton>
               <TabButton current={tab} setTab={setTab} id="cash">Kas</TabButton>
             </nav>
-          </div>
-
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <span className="hidden sm:inline text-xs text-neutral-600 dark:text-neutral-300">
-              Harga/kg: <b>{formatIDR(unitPrice)}</b> <span className="text-[10px]">(pembulatan ke atas)</span>
-            </span>
-            <Button variant="ghost" onClick={() => setShowUnitPriceModal(true)}>Ubah Harga</Button>
           </div>
         </div>
       </header>
@@ -119,7 +108,6 @@ export default function App() {
         {/* Saat tab Orders dibuka, komponen OrdersPage yang akan subscribe + push setOrders sesuai filter */}
         {tab === 'orders' && <OrdersPage customers={customers} orders={orders} setOrders={setOrders} unitPrice={unitPrice} />}
         {tab === 'customers' && <CustomersPage />}
-        {tab === 'calculator' && <CalculatorCard unitPrice={unitPrice} openUnitPrice={() => setShowUnitPriceModal(true)} />}
         {tab === 'cash' && <LedgerPage />}
       </main>
 
