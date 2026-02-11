@@ -351,7 +351,7 @@ export function CustomersPage() {
       {/* Floating Action Button (Mobile Only) */}
       <Button
         onClick={() => { setEditing(null); setShowForm(true); }}
-        className="sm:hidden fixed bottom-6 right-6 z-50 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-xl shadow-indigo-600/30 transition-transform active:scale-90"
+        className="sm:hidden fixed bottom-20 right-6 h-14 w-14 bg-slate-900 text-white rounded-full shadow-xl shadow-slate-900/30 flex items-center justify-center active:scale-95 transition-transform z-40"
         aria-label="Tambah Pelanggan"
       >
         <IconUserPlus className="w-7 h-7" />

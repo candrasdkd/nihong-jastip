@@ -374,7 +374,7 @@ export function LedgerPage() {
             {/* Mobile Floating Action Button */}
             <button
                 onClick={() => setShowForm({ open: true, editing: null })}
-                className="sm:hidden fixed bottom-6 right-6 h-14 w-14 bg-slate-900 text-white rounded-full shadow-xl shadow-slate-900/30 flex items-center justify-center active:scale-95 transition-transform z-40"
+                className="sm:hidden fixed bottom-20 right-6 h-14 w-14 bg-slate-900 text-white rounded-full shadow-xl shadow-slate-900/30 flex items-center justify-center active:scale-95 transition-transform z-40"
             >
                 <Icons.Plus className="w-6 h-6" />
             </button>
