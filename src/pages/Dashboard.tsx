@@ -1,184 +1,297 @@
-import React, { useMemo } from 'react';
-import { Customer, Order } from '../types';
+import React, { useMemo, useState } from 'react';
+import { Customer, MonthPoint, Order, PeriodType } from '../types';
 import { Card } from '../components/ui/Card';
 import { formatIDR } from '../utils/format';
-import { MONTH_LABEL_ID } from '../utils/helpers';
+import { getMonthKey, getOrderProfit, getOrderRevenue, MONTH_LABEL_ID } from '../utils/helpers';
 import {
-  ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, BarChart, Bar, Legend,
+  ResponsiveContainer,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+  BarChart,
+  Bar,
+  Legend,
+  LineChart,
+  Line,
 } from 'recharts';
+import { BG, DONE_SET, GRID, INK, JAPAN_RED } from '../utils/constants';
 
-// --- Palet Warna Baru ---
-const ORANGE = '#f97316';    // tailwind orange-500
-const SLATE_800 = '#1e293b'; // tailwind slate-800
-const GRID = 'rgba(100, 116, 139, 0.1)'; // slate-500 with opacity
-
-// --- Tipe & Helper Internal ---
-type MonthPoint = { key: string; label: string; total: number; count: number; profit: number; };
-const DONE_SET = new Set(['Selesai', 'Sudah Diterima', 'Dibatalkan']);
-
-// --- Ikon SVG Baru ---
-const IconClipboardList = (props: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="8" height="4" x="8" y="2" rx="1" ry="1" /><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><path d="M12 11h4" /><path d="M12 16h4" /><path d="M8 11h.01" /><path d="M8 16h.01" /></svg>);
-const IconUsers = (props: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>);
-const IconTrendingUp = (props: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" /></svg>);
-const IconWallet = (props: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" /><path d="M3 5v14a2 2 0 0 0 2 2h15" /></svg>);
-
-
-/** Ambil revenue per order */
-function getOrderRevenue(o: any): number {
-  const v = Number(o?.totalPembayaran ?? o?.totalHarga ?? 0);
-  return Number.isFinite(v) ? v : 0;
+function GrowthBadge({ value }: { value: number }) {
+  const positive = value >= 0;
+  return (
+    <span
+      className={`text-xs font-medium px-2 py-1 rounded-full ${
+        positive
+          ? 'bg-emerald-100 text-emerald-700'
+          : 'bg-red-100 text-red-700'
+      }`}
+    >
+      {positive ? '▲' : '▼'} {Math.abs(value).toFixed(1)}%
+    </span>
+  );
 }
-/** Ambil profit per order */
-function getOrderProfit(o: any): number {
-  const v = Number(o?.totalKeuntungan ?? o?.profit ?? 0);
-  return Number.isFinite(v) ? v : 0;
-}
-/** Ambil key bulan "YYYY-MM" dari string tanggal */
-function getMonthKeyFromTanggal(tanggal?: string): string | null {
-  if (!tanggal || typeof tanggal !== 'string') return null;
-  const norm = tanggal.replace(/\//g, '-');
-  const m = norm.match(/^(\d{4})-(\d{2})/);
-  return m ? `${m[1]}-${m[2]}` : null;
-}
-/** Konversi key "YYYY-MM" → {y, mIdx} */
-function keyToYM(key: string) {
-  const [yy, mm] = key.split('-').map(n => parseInt(n, 10));
-  return { y: yy, mIdx: mm - 1 };
-}
-/** Inkrement bulan */
-function incMonth(y: number, mIdx: number) {
-  let ny = y, nm = mIdx + 1;
-  if (nm > 11) { ny = y + 1; nm = 0; }
-  return { y: ny, mIdx: nm };
-}
-/** Label "MMM YY" Indonesia pendek */
-function monthLabel(y: number, mIdx: number) {
-  return `${MONTH_LABEL_ID[mIdx]} ${String(y).slice(2)}`;
-}
+export function Dashboard({
+  orders,
+  customers,
+}: {
+  orders: Order[];
+  customers: Customer[];
+}) {
+  const [period, setPeriod] = useState<PeriodType>('12m');
 
+  /* ========= FILTER ========= */
+  const filteredOrders = useMemo(() => {
+    const now = new Date();
+    const from = new Date();
 
-export function Dashboard({ orders, customers }: { orders: Order[]; customers: Customer[]; }) {
-  // 1) Kalkulasi data untuk grafik & KPI
-  const { monthlyData, periodLabel } = useMemo(() => {
-    const monthMap = new Map<string, MonthPoint>();
-    if (orders.length === 0) return { monthlyData: [], periodLabel: 'Tidak ada data' };
+    if (period === '30d') from.setDate(now.getDate() - 30);
+    if (period === '3m') from.setMonth(now.getMonth() - 3);
+    if (period === '12m') from.setMonth(now.getMonth() - 12);
 
-    const keys: string[] = [];
-    for (const o of orders) {
-      const k = getMonthKeyFromTanggal((o as any).tanggal);
-      if (!k) continue;
-      if (!monthMap.has(k)) {
-        const { y, mIdx } = keyToYM(k);
-        monthMap.set(k, { key: k, label: monthLabel(y, mIdx), total: 0, count: 0, profit: 0 });
-        keys.push(k);
+    return orders.filter((o: any) => {
+      const d = new Date(o?.tanggal);
+      return d >= from && d <= now;
+    });
+  }, [orders, period]);
+
+  /* ========= MONTHLY DATA ========= */
+  const monthlyData = useMemo(() => {
+    const map = new Map<string, MonthPoint>();
+
+    for (const o of filteredOrders) {
+      const key = getMonthKey((o as any).tanggal);
+      if (!key) continue;
+
+      if (!map.has(key)) {
+        const [y, m] = key.split('-');
+        map.set(key, {
+          key,
+          label: `${MONTH_LABEL_ID[Number(m) - 1]} ${y.slice(2)}`,
+          total: 0,
+          count: 0,
+          profit: 0,
+        });
       }
-      const pt = monthMap.get(k)!;
+
+      const pt = map.get(key)!;
       pt.total += getOrderRevenue(o);
       pt.profit += getOrderProfit(o);
       pt.count += 1;
     }
-    if (keys.length === 0) return { monthlyData: [], periodLabel: 'Tidak ada data' };
 
-    keys.sort();
-    const firstKey = keys[0];
-    const lastKey = keys[keys.length - 1];
+    return Array.from(map.values()).sort((a, b) =>
+      a.key.localeCompare(b.key)
+    );
+  }, [filteredOrders]);
 
-    // Isi bulan yang kosong agar grafik kontinyu
-    const series: MonthPoint[] = [];
-    let { y, mIdx } = keyToYM(firstKey);
-    const end = keyToYM(lastKey);
+  /* ========= KPI ========= */
+  const activeOrders = filteredOrders.filter(
+    (o: any) => !DONE_SET.has(String(o?.status || ''))
+  ).length;
 
-    while (true) {
-      const k = `${y}-${String(mIdx + 1).padStart(2, '0')}`;
-      const label = monthLabel(y, mIdx);
-      series.push(monthMap.get(k) ?? { key: k, label, total: 0, count: 0, profit: 0 });
-      if (y === end.y && mIdx === end.mIdx) break;
-      ({ y, mIdx } = incMonth(y, mIdx));
-    }
+  const totalRevenue = monthlyData.reduce((s, m) => s + m.total, 0);
+  const totalProfit = monthlyData.reduce((s, m) => s + m.profit, 0);
+  const totalOrders = monthlyData.reduce((s, m) => s + m.count, 0);
 
-    const period = `${series[0].label} – ${series[series.length - 1].label}`;
-    return { monthlyData: series, periodLabel: period };
-  }, [orders]);
+  const avgRevenue = totalOrders ? totalRevenue / totalOrders : 0;
+  const margin = totalRevenue ? (totalProfit / totalRevenue) * 100 : 0;
 
-  // 2) Hitung KPI utama
-  const activeOrders = useMemo(() => orders.filter((o: any) => !DONE_SET.has(String(o?.status || ''))).length, [orders]);
-  const totalRevenue = useMemo(() => monthlyData.reduce((s, m) => s + m.total, 0), [monthlyData]);
-  const totalProfit = useMemo(() => monthlyData.reduce((s, m) => s + m.profit, 0), [monthlyData]);
+  const bestMonth =
+    monthlyData.length > 0
+      ? monthlyData.reduce((max, m) =>
+          m.total > max.total ? m : max
+        )
+      : null;
+
+  /* ========= GROWTH ========= */
+  const half = Math.floor(monthlyData.length / 2);
+  const prevRevenue = monthlyData
+    .slice(0, half)
+    .reduce((s, m) => s + m.total, 0);
+
+  const growth = prevRevenue
+    ? ((totalRevenue - prevRevenue) / prevRevenue) * 100
+    : 0;
 
   return (
-    <div className="bg-slate-50 min-h-screen p-4 sm:p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Page Header */}
-        <header>
-          <h1 className="text-3xl font-bold text-slate-800">Dasbor Utama</h1>
-          <p className="text-sm text-slate-500 mt-1">Ringkasan performa bisnis Anda secara keseluruhan.</p>
-        </header>
+    <div
+      className="relative min-h-screen px-4 sm:px-8 lg:px-16 py-10"
+      style={{
+        backgroundColor: BG,
+        backgroundImage:
+          'radial-gradient(rgba(0,0,0,0.03) 1px, transparent 1px)',
+        backgroundSize: '4px 4px',
+      }}
+    >
+      <div className="relative w-full max-w-[1600px] mx-auto space-y-10">
 
-        {/* Stat cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          <Card className="p-5 flex items-center gap-5 bg-white shadow-sm">
-            <div className="w-12 h-12 rounded-full bg-sky-100 flex items-center justify-center shrink-0"><IconClipboardList className="w-6 h-6 text-sky-600" /></div>
-            <div>
-              <div className="text-sm text-slate-500">Pesanan Aktif</div>
-              <p className="text-2xl font-bold text-slate-800 mt-1">{activeOrders}</p>
-            </div>
-          </Card>
-          <Card className="p-5 flex items-center gap-5 bg-white shadow-sm">
-            <div className="w-12 h-12 rounded-full bg-violet-100 flex items-center justify-center shrink-0"><IconUsers className="w-6 h-6 text-violet-600" /></div>
-            <div>
-              <div className="text-sm text-slate-500">Total Pelanggan</div>
-              <p className="text-2xl font-bold text-slate-800 mt-1">{customers.length}</p>
-            </div>
-          </Card>
-          <Card className="p-5 flex items-center gap-5 bg-white shadow-sm">
-            <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center shrink-0"><IconTrendingUp className="w-6 h-6 text-orange-600" /></div>
-            <div>
-              <div className="text-sm text-slate-500">Total Pendapatan</div>
-              <p className="text-2xl font-bold text-slate-800 mt-1">{formatIDR(totalRevenue)}</p>
-            </div>
-          </Card>
-          <Card className="p-5 flex items-center gap-5 bg-white shadow-sm">
-            <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center shrink-0"><IconWallet className="w-6 h-6 text-emerald-600" /></div>
-            <div>
-              <div className="text-sm text-slate-500">Total Keuntungan</div>
-              <p className="text-2xl font-bold text-slate-800 mt-1">{formatIDR(totalProfit)}</p>
-            </div>
-          </Card>
+        {/* Header + Filter */}
+        <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6">
+          <div>
+            <h1 className="text-3xl font-semibold text-gray-800">
+              Dasbor Utama
+            </h1>
+            <p className="text-sm text-gray-500">
+              Insight bisnis & performa operasional
+            </p>
+          </div>
+
+          <div className="flex gap-2">
+            {[
+              { label: '30 Hari', value: '30d' },
+              { label: '3 Bulan', value: '3m' },
+              { label: '12 Bulan', value: '12m' },
+            ].map((p) => (
+              <button
+                key={p.value}
+                onClick={() => setPeriod(p.value as PeriodType)}
+                className={`px-4 py-1.5 rounded-full text-sm transition ${
+                  period === p.value
+                    ? 'bg-red-600 text-white'
+                    : 'bg-white border border-neutral-300 text-neutral-600'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Chart */}
-        <Card className="p-4 sm:p-6 bg-white shadow-sm">
-          <header className="mb-4">
-            <h2 className="text-lg font-semibold text-slate-800">Grafik Tren Bulanan</h2>
-            <p className="text-sm text-slate-500">{periodLabel}</p>
-          </header>
+        {/* KPI GRID */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
 
-          <div className="h-80 -ml-4">
-            {monthlyData.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-slate-500 text-sm">
-                Tidak ada data transaksi untuk ditampilkan dalam grafik.
+          <Card className="p-6 bg-white rounded-3xl shadow-sm">
+            <div className="text-sm text-gray-500">Pesanan Aktif</div>
+            <div className="text-2xl font-semibold mt-2">
+              {activeOrders}
+            </div>
+          </Card>
+
+          <Card className="p-6 bg-white rounded-3xl shadow-sm">
+            <div className="text-sm text-gray-500">Total Pelanggan</div>
+            <div className="text-2xl font-semibold mt-2">
+              {customers.length}
+            </div>
+          </Card>
+
+          <Card className="p-6 bg-white rounded-3xl shadow-sm">
+            <div className="flex justify-between">
+              <div className="text-sm text-gray-500">
+                Total Pendapatan
               </div>
-            ) : (
+              <GrowthBadge value={growth} />
+            </div>
+            <div className="text-2xl font-semibold mt-2">
+              {formatIDR(totalRevenue)}
+            </div>
+          </Card>
+
+          <Card className="p-6 bg-white rounded-3xl shadow-sm">
+            <div className="text-sm text-gray-500">Margin</div>
+            <div className="text-2xl font-semibold mt-2">
+              {margin.toFixed(1)}%
+            </div>
+          </Card>
+
+          <Card className="p-6 bg-white rounded-3xl shadow-sm">
+            <div className="text-sm text-gray-500">Avg / Order</div>
+            <div className="text-2xl font-semibold mt-2">
+              {formatIDR(avgRevenue)}
+            </div>
+          </Card>
+
+          <Card className="p-6 bg-white rounded-3xl shadow-sm border-l-4 border-red-600">
+            <div className="text-sm text-gray-500">
+              Bulan Terbaik
+            </div>
+            <div className="text-lg font-semibold mt-2">
+              {bestMonth ? bestMonth.label : '-'}
+            </div>
+            <div className="text-sm text-gray-500">
+              {bestMonth ? formatIDR(bestMonth.total) : ''}
+            </div>
+          </Card>
+
+        </div>
+
+        {/* CHART */}
+        <Card className="p-8 bg-white rounded-3xl shadow-sm">
+          <h2 className="text-lg font-semibold text-gray-800 mb-6">
+            Grafik Tren Bulanan
+          </h2>
+
+          <div className="h-[360px] sm:h-[420px] xl:h-[520px]">
+
+            {/* 📱 MOBILE → LINE */}
+            <div className="block md:hidden h-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthlyData} margin={{ top: 5, right: 30, left: 5, bottom: 5 }}>
+                <LineChart data={monthlyData}>
                   <CartesianGrid stroke={GRID} strokeDasharray="3 3" />
-                  <XAxis dataKey="label" tick={{ fill: SLATE_800, fontSize: 12 }} tickLine={false} axisLine={{ stroke: GRID }} />
-                  <YAxis yAxisId="left" tick={{ fill: SLATE_800, fontSize: 12 }} tickLine={false} axisLine={false} />
-                  <YAxis yAxisId="right" orientation="right" tick={{ fill: SLATE_800, fontSize: 12 }} tickFormatter={(v: number) => formatIDR(v)} tickLine={false} axisLine={false} />
-                  <Tooltip
-                    formatter={(value: any, name: string) => (name.includes('Pendapatan') || name.includes('Keuntungan') ? formatIDR(value as number) : value)}
-                    contentStyle={{ background: 'white', border: `1px solid ${GRID}`, borderRadius: '0.75rem', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
-                    labelStyle={{ color: SLATE_800, fontWeight: 600, marginBottom: '0.5rem' }}
-                    itemStyle={{ color: SLATE_800, paddingTop: '0.25rem', paddingBottom: '0.25rem' }}
+                  <XAxis dataKey="label" tick={{ fill: INK, fontSize: 12 }} />
+                  <YAxis
+                    tickFormatter={(v: number) => formatIDR(v)}
+                    tick={{ fill: INK }}
                   />
-                  <Legend wrapperStyle={{ color: SLATE_800, paddingTop: '1rem' }} />
-                  <Bar yAxisId="left" dataKey="count" name="Jumlah Pesanan" fill={ORANGE} radius={[4, 4, 0, 0]} maxBarSize={30} />
-                  <Bar yAxisId="right" dataKey="total" name="Pendapatan (Rp)" fill={SLATE_800} radius={[4, 4, 0, 0]} maxBarSize={30} />
+                  <Tooltip
+                    formatter={(value: any) => formatIDR(value as number)}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="total"
+                    stroke={JAPAN_RED}
+                    strokeWidth={3}
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* 💻 DESKTOP → BAR DUAL AXIS */}
+            <div className="hidden md:block h-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={monthlyData}
+                  margin={{ top: 20, right: 40, left: 20, bottom: 10 }}
+                >
+                  <CartesianGrid stroke={GRID} strokeDasharray="3 3" />
+                  <XAxis dataKey="label" tick={{ fill: INK }} />
+                  <YAxis yAxisId="left" tick={{ fill: INK }} />
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    tickFormatter={(v: number) => formatIDR(v)}
+                    tick={{ fill: INK }}
+                  />
+                  <Tooltip
+                    formatter={(value: any, name: string) =>
+                      name.includes('Pendapatan')
+                        ? formatIDR(value as number)
+                        : value
+                    }
+                  />
+                  <Legend />
+                  <Bar
+                    yAxisId="left"
+                    dataKey="count"
+                    name="Jumlah Pesanan"
+                    fill={JAPAN_RED}
+                    radius={[6, 6, 0, 0]}
+                  />
+                  <Bar
+                    yAxisId="right"
+                    dataKey="total"
+                    name="Pendapatan (Rp)"
+                    fill={INK}
+                    radius={[6, 6, 0, 0]}
+                  />
                 </BarChart>
               </ResponsiveContainer>
-            )}
+            </div>
+
           </div>
         </Card>
+
       </div>
     </div>
   );

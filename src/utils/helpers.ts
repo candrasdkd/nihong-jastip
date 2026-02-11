@@ -96,3 +96,17 @@ export const compute = (o: ExtendedOrder, unitPrice: number) => {
     currency
   };
 };
+
+
+export function getOrderRevenue(o: any) {
+  return Number(o?.totalPembayaran ?? o?.totalHarga ?? 0) || 0;
+}
+export function getOrderProfit(o: any) {
+  return Number(o?.totalKeuntungan ?? o?.profit ?? 0) || 0;
+}
+export function getMonthKey(dateStr?: string) {
+  if (!dateStr) return null;
+  const norm = dateStr.replace(/\//g, '-');
+  const m = norm.match(/^(\d{4})-(\d{2})/);
+  return m ? `${m[1]}-${m[2]}` : null;
+}

@@ -1,4 +1,4 @@
-type TabId = 'dashboard' | 'orders' | 'customers' | 'calculator' | 'cash';
+type TabId = 'dashboard' | 'orders' | 'customers' | 'purchase' | 'cash';
 
 export function BottomTabBar({
     current,
@@ -39,7 +39,7 @@ export function BottomTabBar({
                     <Item id="dashboard" label="Dashboard" Icon={IconHome} />
                     <Item id="orders" label="Pesanan" Icon={IconClipboard} />
                     <Item id="customers" label="Konsumen" Icon={IconUsers} />
-                    <Item id="calculator" label="Kalkulator" Icon={IconCalculator} />
+                    <Item id="purchase" label="Pembelian" Icon={IconCalculator} />
                     <Item id="cash" label="Kas" Icon={IconCash} />
                 </div>
             </nav>

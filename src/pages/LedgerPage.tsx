@@ -16,6 +16,7 @@ import {
 } from '../services/ledgerFirebase';
 import { LedgerFormModal } from '../components/LedgerFormModal';
 import { formatAndAddYear } from '../utils/helpers';
+import { BG } from '../utils/constants';
 
 // ===== Helper Functions =====
 function toInputDate(d: Date) {
@@ -162,7 +163,14 @@ export function LedgerPage() {
     }
 
     return (
-        <div className="bg-slate-50 min-h-screen p-4 sm:p-6 lg:p-8">
+        <div
+            className="relative min-h-screen p-4 sm:p-6 lg:p-8"
+            style={{
+                backgroundColor: BG,
+                backgroundImage: 'radial-gradient(rgba(0,0,0,0.03) 1px, transparent 1px)',
+                backgroundSize: '4px 4px',
+            }}
+        >
             <div className="max-w-7xl mx-auto space-y-6">
                 {/* Page Header */}
                 <header>
@@ -253,7 +261,7 @@ export function LedgerPage() {
                                 )}
                                 {!loading && filtered.map((r) => (
                                     <tr key={r.id} className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
-                                        <td className="px-4 py-3 whitespace-nowrap text-slate-600">{r.tanggal}</td>
+                                        <td className="px-4 py-3 whitespace-nowrap text-slate-600">{formatAndAddYear(r.tanggal)}</td>
                                         <td className="px-4 py-3 text-slate-800 font-medium max-w-[300px] truncate" title={r.keterangan}>{r.keterangan || '-'}</td>
                                         <td className="px-4 py-3 whitespace-nowrap text-slate-600">{r.kategori || '-'}</td>
                                         <td className="px-4 py-3 whitespace-nowrap"><TypePill type={r.tipe} /></td>

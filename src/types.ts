@@ -48,3 +48,13 @@ export type OrderDoc = {
   createdAt?: any;
   updatedAt?: any;
 };
+
+export type PeriodType = '30d' | '3m' | '12m';
+
+export type MonthPoint = {
+  key: string;
+  label: string;
+  total: number;
+  count: number;
+  profit: number;
+};

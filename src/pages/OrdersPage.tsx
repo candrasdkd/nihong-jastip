@@ -17,7 +17,7 @@ import {
   updateOrder,
 } from '../services/ordersFirebase';
 import { endOfMonth, formatAndAddYear, startOfMonth, toInputDate } from '../utils/helpers';
-import { ORDER_STATUSES } from '../utils/constants';
+import { BG, ORDER_STATUSES } from '../utils/constants';
 
 
 // ===== UI Components (New & Refined) =====
@@ -125,7 +125,15 @@ export function OrdersPage({ orders, setOrders, customers, unitPrice }: {
   };
 
   return (
-    <div className="bg-slate-50 min-h-screen p-4 sm:p-6 lg:p-8">
+    <div
+      className="relative min-h-screen p-4 sm:p-6 lg:p-8"
+      style={{
+        backgroundColor: BG,
+        backgroundImage:
+          'radial-gradient(rgba(0,0,0,0.03) 1px, transparent 1px)',
+        backgroundSize: '4px 4px',
+      }}
+    >
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Page Header */}
         <header>
