@@ -93,26 +93,26 @@ export default function App() {
     return () => unsub();
   }, [tab, user]);
 
-// ⏳ Loading Auth (Replaced)
+  // ⏳ Loading Auth (Replaced)
   if (authLoading) {
     return (
       <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white dark:bg-neutral-950 transition-colors duration-300">
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ 
-            duration: 0.5, 
-            ease: "easeOut" 
+          transition={{
+            duration: 0.5,
+            ease: "easeOut"
           }}
           className="flex flex-col items-center gap-4"
         >
           {/* Container Logo dengan efek breathing */}
-          <motion.div 
+          <motion.div
             animate={{ scale: [1, 1.05, 1] }}
-            transition={{ 
-              duration: 2, 
-              repeat: Infinity, 
-              ease: "easeInOut" 
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+              ease: "easeInOut"
             }}
             className="h-20 w-20 rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xl grid place-items-center overflow-hidden"
           >
