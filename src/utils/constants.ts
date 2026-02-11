@@ -23,3 +23,6 @@ export const GRID = 'rgba(0,0,0,0.06)';
 export const BG = '#f8f8f6';
 
 export const DONE_SET = new Set(['Selesai', 'Sudah Diterima', 'Dibatalkan']);
+
+export const PIC_OPTIONS = ["Diny", "Mizwar", "Zakiya", "Yua", "Candra"];
+export const PLATFORM_OPTIONS = ["Shopee", "Tokopedia", "TikTok", "Manual"];

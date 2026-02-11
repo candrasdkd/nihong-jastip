@@ -58,3 +58,22 @@ export type MonthPoint = {
   count: number;
   profit: number;
 };
+
+export type PurchaseItem = {
+  id: string;
+  name: string;
+  quantity: string;
+  pic: string;
+  customer: string;
+  platform?: string;
+  link?: string;
+  note?: string;
+  shippingDate: string;
+  isDone: boolean;
+};
+
+export type ShareConfig = {
+  date: string;
+  pic: string;
+  status: "all" | "pending" | "done";
+};

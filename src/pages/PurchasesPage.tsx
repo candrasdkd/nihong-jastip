@@ -18,31 +18,8 @@ import {
   CheckCircle, Clock, Share2, Copy
 } from "lucide-react";
 import { formatAndAddYear } from "../utils/helpers";
-import { BG } from "../utils/constants";
-
-// --- TYPES ---
-type PurchaseItem = {
-  id: string;
-  name: string;
-  quantity: string;
-  pic: string;
-  customer: string;
-  platform?: string;
-  link?: string;
-  note?: string;
-  shippingDate: string;
-  isDone: boolean;
-};
-
-type ShareConfig = {
-  date: string;
-  pic: string;
-  status: "all" | "pending" | "done";
-};
-
-// --- CONSTANTS ---
-const PIC_OPTIONS = ["Diny", "Mizwar", "Zakiya", "Yua", "Candra"];
-const PLATFORM_OPTIONS = ["Shopee", "Tokopedia", "TikTok", "Manual"];
+import { BG, PIC_OPTIONS, PLATFORM_OPTIONS } from "../utils/constants";
+import { PurchaseItem, ShareConfig } from "../types";
 
 // --- COMPONENTS ---
 const StatCard = ({ label, value, icon: Icon, color }: { label: string, value: number, icon: any, color: string }) => (
@@ -255,7 +232,7 @@ export default function PurchasesPage() {
       const customerItems = groupedByCustomer[customer].sort((a, b) => a.name.localeCompare(b.name));
 
       customerItems.forEach(item => {
-        const check = item.isDone ? "✅" : "⬜";
+        const check = item.isDone ? "✅" : "⭕️";
         text += `${check} ${item.name} (${item.quantity})`;
         if(item.note) text += `\n   └ _Note: ${item.note}_`;
         text += `\n`;
@@ -584,7 +561,7 @@ export default function PurchasesPage() {
                 <div className={`w-full sm:w-1/2 flex flex-col h-full relative ${!editing && activeTab === "draft" ? "hidden sm:flex" : "flex"}`}>
 
                   {/* Scrollable Form Content */}
-                  <div className="flex-1 overflow-y-auto p-5 custom-scrollbar pb-24 sm:pb-5">
+                  <div className="flex-1 overflow-y-auto p-5 custom-scrollbar pb-24 sm:pb-30">
                     <div className="space-y-5">
                       <div className="space-y-1.5">
                         <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide ml-1">Nama Barang</label>
