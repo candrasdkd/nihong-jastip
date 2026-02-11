@@ -10,15 +10,15 @@ import {
     orderBy,
     writeBatch,
 } from "firebase/firestore";
-import { db } from "../lib/firebase"; 
+import { db } from "../lib/firebase";
 import {
     Plus, Package, Calendar, Trash2, Edit3, CheckCircle2, Circle, X,
     Search, SortAsc, SortDesc, ListPlus, Send,
     LayoutGrid, ClipboardList, Loader2, SearchX, ExternalLink, User,
     CheckCircle, Clock
 } from "lucide-react";
-import { formatAndAddYear } from "../utils/helpers"; 
-import { BG } from "../utils/constants"; 
+import { formatAndAddYear } from "../utils/helpers";
+import { BG } from "../utils/constants";
 
 // --- TYPES ---
 type PurchaseItem = {
@@ -66,7 +66,7 @@ export default function PurchasesPage() {
     const emptyForm = { name: "", quantity: "", pic: "", customer: "", platform: "", link: "", note: "", shippingDate: "", isDone: false };
     const [form, setForm] = useState(emptyForm);
     const [drafts, setDrafts] = useState<Omit<PurchaseItem, 'id'>[]>([]);
-    
+
     // Ref untuk fokus balik ke input nama setelah add
     const nameInputRef = useRef<HTMLInputElement>(null);
 
@@ -86,12 +86,12 @@ export default function PurchasesPage() {
     const addToDraft = () => {
         if (!form.name || !form.pic || !form.shippingDate || !form.customer) return;
         setDrafts(prev => [...prev, { ...form }]);
-        setForm(prev => ({ 
-            ...emptyForm, 
-            pic: prev.pic, 
-            shippingDate: prev.shippingDate, 
-            customer: prev.customer, 
-            platform: prev.platform 
+        setForm(prev => ({
+            ...emptyForm,
+            pic: prev.pic,
+            shippingDate: prev.shippingDate,
+            customer: prev.customer,
+            platform: prev.platform
         }));
         // Fokuskan kembali ke input nama agar bisa input cepat
         setTimeout(() => nameInputRef.current?.focus(), 100);
@@ -124,7 +124,7 @@ export default function PurchasesPage() {
         setIsProcessing(true);
         try {
             await deleteDoc(doc(db, "purchases", id));
-        } catch(e) { console.error(e) } 
+        } catch (e) { console.error(e) }
         finally { setIsProcessing(false); }
     };
 
@@ -206,7 +206,7 @@ export default function PurchasesPage() {
             {/* --- LOADING OVERLAY --- */}
             <AnimatePresence>
                 {isProcessing && (
-                    <motion.div 
+                    <motion.div
                         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                         className="fixed inset-0 z-[100] bg-white/50 backdrop-blur-sm flex items-center justify-center"
                     >
@@ -220,7 +220,7 @@ export default function PurchasesPage() {
 
             {/* --- MAIN CONTENT WRAPPER --- */}
             <div className="max-w-5xl mx-auto space-y-6">
-                
+
                 {/* --- HEADER & STATS --- */}
                 <div className="space-y-4">
                     <div>
@@ -256,9 +256,8 @@ export default function PurchasesPage() {
                                 <button
                                     key={f}
                                     onClick={() => setFilter(f)}
-                                    className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all ${
-                                        filter === f ? "bg-white text-slate-800 shadow-sm" : "text-slate-400 hover:text-slate-600"
-                                    }`}
+                                    className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all ${filter === f ? "bg-white text-slate-800 shadow-sm" : "text-slate-400 hover:text-slate-600"
+                                        }`}
                                 >
                                     {f}
                                 </button>
@@ -282,11 +281,11 @@ export default function PurchasesPage() {
                     ) : (
                         Object.entries(grouped).map(([date, data]) => {
                             const progress = data.total > 0 ? Math.round((data.done / data.total) * 100) : 0;
-                            
+
                             return (
-                                <motion.section 
-                                    initial={{ opacity: 0, y: 20 }} 
-                                    animate={{ opacity: 1, y: 0 }} 
+                                <motion.section
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
                                     key={date}
                                     className="relative"
                                 >
@@ -321,7 +320,7 @@ export default function PurchasesPage() {
                                                 <div className="absolute -left-[45px] top-0 flex items-center justify-center">
                                                     <div className="w-2 h-2 bg-slate-400 rounded-full ring-4 ring-[#f8f9fa]" />
                                                 </div>
-                                                
+
                                                 <div className="mb-3">
                                                     <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-800 text-white text-[9px] font-bold uppercase tracking-widest shadow-md">
                                                         PIC: {pic}
@@ -336,30 +335,30 @@ export default function PurchasesPage() {
                                                                 <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">{customer}</span>
                                                                 <div className="h-px bg-slate-200 flex-1 ml-2" />
                                                             </div>
-                                                            
+
                                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                                                 {list.map((item) => (
-                                                                    <div 
-                                                                        key={item.id} 
+                                                                    <div
+                                                                        key={item.id}
                                                                         className={`
                                                                             group relative p-3 rounded-xl border transition-all duration-200
-                                                                            ${item.isDone 
-                                                                                ? 'bg-slate-50 border-slate-100 opacity-60 grayscale-[0.8] hover:grayscale-0' 
+                                                                            ${item.isDone
+                                                                                ? 'bg-slate-50 border-slate-100 opacity-60 grayscale-[0.8] hover:grayscale-0'
                                                                                 : 'bg-white border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-orange-200'
                                                                             }
                                                                         `}
                                                                     >
                                                                         <div className="flex gap-3">
-                                                                            <button 
+                                                                            <button
                                                                                 onClick={() => toggleDone(item)}
                                                                                 className="mt-0.5 shrink-0 transition-transform active:scale-90"
                                                                             >
-                                                                                {item.isDone 
-                                                                                    ? <CheckCircle2 size={20} className="text-green-500" /> 
+                                                                                {item.isDone
+                                                                                    ? <CheckCircle2 size={20} className="text-green-500" />
                                                                                     : <Circle size={20} className="text-slate-300 group-hover:text-orange-400 transition-colors" />
                                                                                 }
                                                                             </button>
-                                                                            
+
                                                                             <div className="flex-1 min-w-0">
                                                                                 <div className="flex justify-between items-start gap-2">
                                                                                     <h4 className={`font-bold text-xs leading-tight ${item.isDone ? "text-slate-500 line-through decoration-slate-300" : "text-slate-800"}`}>
@@ -371,7 +370,7 @@ export default function PurchasesPage() {
                                                                                         </button>
                                                                                     )}
                                                                                 </div>
-                                                                                
+
                                                                                 <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                                                                                     <span className="text-[10px] font-black text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-100">
                                                                                         {item.quantity}
@@ -393,7 +392,24 @@ export default function PurchasesPage() {
 
                                                                         {/* Actions */}
                                                                         <div className="absolute bottom-2 right-2 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                                                                            <button onClick={() => { setEditing(item); setForm(item); setIsOpen(true); }} className="p-1 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded transition-colors">
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    setEditing(item);
+                                                                                    setForm({
+                                                                                        name: item.name,
+                                                                                        quantity: item.quantity,
+                                                                                        pic: item.pic,
+                                                                                        customer: item.customer,
+                                                                                        shippingDate: item.shippingDate,
+                                                                                        isDone: item.isDone,
+                                                                                        platform: item.platform || "",
+                                                                                        link: item.link || "",        
+                                                                                        note: item.note || ""         
+                                                                                    });
+                                                                                    setIsOpen(true);
+                                                                                }}
+                                                                                className="p-1 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded transition-colors"
+                                                                            >
                                                                                 <Edit3 size={12} />
                                                                             </button>
                                                                             <button onClick={() => handleDelete(item.id)} className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors">
@@ -430,13 +446,13 @@ export default function PurchasesPage() {
             <AnimatePresence>
                 {isOpen && (
                     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-                        <motion.div 
-                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
-                            onClick={closeModal} 
-                            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" 
+                        <motion.div
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            onClick={closeModal}
+                            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
                         />
-                        <motion.div 
-                            initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} 
+                        <motion.div
+                            initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
                             transition={{ type: "spring", damping: 25, stiffness: 300 }}
                             className="bg-[#f8f9fa] w-full max-w-5xl h-[90vh] sm:h-[85vh] rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl relative flex flex-col overflow-hidden ring-1 ring-white/50"
                         >
@@ -464,21 +480,21 @@ export default function PurchasesPage() {
 
                             {/* Modal Content Grid */}
                             <div className="flex flex-col sm:flex-row flex-1 min-h-0 overflow-hidden">
-                                
+
                                 {/* LEFT: FORM INPUT - Perbaikan: Flex-col, min-h-0, dan overflow auto di content tengah */}
                                 <div className={`w-full sm:w-1/2 flex flex-col h-full relative ${!editing && activeTab === "draft" ? "hidden sm:flex" : "flex"}`}>
-                                    
+
                                     {/* Scrollable Form Content */}
                                     <div className="flex-1 overflow-y-auto p-5 custom-scrollbar">
                                         <div className="space-y-4">
                                             <div className="space-y-1">
                                                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide ml-1">Nama Barang</label>
-                                                <input 
+                                                <input
                                                     ref={nameInputRef}
-                                                    placeholder="Contoh: KitKat Matcha..." 
-                                                    className="w-full bg-white border border-slate-200 p-3 rounded-xl text-xs outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 font-bold transition-all placeholder:font-normal placeholder:text-slate-300 shadow-sm" 
-                                                    value={form.name} 
-                                                    onChange={(e) => setForm({ ...form, name: e.target.value })} 
+                                                    placeholder="Contoh: KitKat Matcha..."
+                                                    className="w-full bg-white border border-slate-200 p-3 rounded-xl text-xs outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 font-bold transition-all placeholder:font-normal placeholder:text-slate-300 shadow-sm"
+                                                    value={form.name}
+                                                    onChange={(e) => setForm({ ...form, name: e.target.value })}
                                                     autoFocus={!editing}
                                                 />
                                             </div>
@@ -497,7 +513,7 @@ export default function PurchasesPage() {
                                             <div className="space-y-1">
                                                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide ml-1">Customer</label>
                                                 <div className="relative">
-                                                    <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={14}/>
+                                                    <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
                                                     <input placeholder="Nama Pembeli..." className="w-full bg-white border border-slate-200 pl-9 pr-3 py-3 rounded-xl text-xs outline-none focus:border-orange-500 font-bold shadow-sm" value={form.customer} onChange={(e) => setForm({ ...form, customer: e.target.value })} />
                                                 </div>
                                             </div>
@@ -588,16 +604,16 @@ export default function PurchasesPage() {
                                                     <span className="text-[9px] font-black text-orange-400 uppercase tracking-widest block mb-1">Edit Mode:</span>
                                                     <p className="font-bold text-slate-800 text-sm leading-tight mb-1">{form.name || "Nama Barang..."}</p>
                                                     <div className="flex gap-2 text-[10px] text-slate-500">
-                                                        <span>{form.customer || "Customer"}</span> • 
+                                                        <span>{form.customer || "Customer"}</span> •
                                                         <span>{form.quantity || "Qty"}</span>
                                                     </div>
                                                 </div>
                                             ) : (
                                                 <AnimatePresence>
                                                     {drafts.map((d, i) => (
-                                                        <motion.div 
+                                                        <motion.div
                                                             initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-                                                            key={i} 
+                                                            key={i}
                                                             className="bg-white p-3 rounded-xl border border-slate-100 flex justify-between items-center shadow-sm"
                                                         >
                                                             <div className="min-w-0 pr-3">
