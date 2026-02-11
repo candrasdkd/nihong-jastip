@@ -93,11 +93,46 @@ export default function App() {
     return () => unsub();
   }, [tab, user]);
 
-  // ⏳ Loading Auth
+// ⏳ Loading Auth (Replaced)
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        Loading...
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white dark:bg-neutral-950 transition-colors duration-300">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ 
+            duration: 0.5, 
+            ease: "easeOut" 
+          }}
+          className="flex flex-col items-center gap-4"
+        >
+          {/* Container Logo dengan efek breathing */}
+          <motion.div 
+            animate={{ scale: [1, 1.05, 1] }}
+            transition={{ 
+              duration: 2, 
+              repeat: Infinity, 
+              ease: "easeInOut" 
+            }}
+            className="h-20 w-20 rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xl grid place-items-center overflow-hidden"
+          >
+            <img
+              src={logoLight}
+              alt="Logo Nihong"
+              className="h-12 w-12 object-contain"
+            />
+          </motion.div>
+
+          {/* Text Branding */}
+          <div className="text-center space-y-1">
+            <h1 className="text-xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
+              Nihong Jastip
+            </h1>
+            <p className="text-sm text-neutral-500 animate-pulse">
+              Memuat data...
+            </p>
+          </div>
+        </motion.div>
       </div>
     );
   }
