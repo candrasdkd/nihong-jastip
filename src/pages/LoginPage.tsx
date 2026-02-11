@@ -2,8 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform, useSpring } from "framer-motion";
 import { login } from '../services/authFirebase';
 import logo from '../assets/nihong.png';
-import sakuraSound from '../assets/sakura.mp3';
-import { Volume2, VolumeX } from 'lucide-react';
 
 /* =========================
 🌸 Sakura Petal (Improved Physics)
@@ -60,36 +58,6 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [transitioning, setTransitioning] = useState(false);
-  
-  // Audio State
-  const [isPlaying, setIsPlaying] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  // Initialize Audio
-  useEffect(() => {
-    audioRef.current = new Audio(sakuraSound);
-    audioRef.current.loop = true;
-    audioRef.current.volume = 0.4;
-
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-    };
-  }, []);
-
-  // Toggle Play/Pause
-  const toggleAudio = () => {
-    if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.pause();
-      } else {
-        audioRef.current.play().catch(err => console.log("User interaction required"));
-      }
-      setIsPlaying(!isPlaying);
-    }
-  };
 
   // Parallax Effect
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -123,27 +91,6 @@ export function LoginPage() {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#faf9f6] selection:bg-red-100">
-      
-      {/* Audio Control Button */}
-      <div className="fixed bottom-8 right-8 z-[60]">
-        <motion.button
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={toggleAudio}
-          className="relative flex items-center justify-center w-12 h-12 bg-white border border-neutral-200 rounded-full shadow-lg text-neutral-800 hover:text-red-600 transition-colors"
-        >
-          {isPlaying && (
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0.5 }}
-              animate={{ scale: 1.5, opacity: 0 }}
-              transition={{ repeat: Infinity, duration: 1.5 }}
-              className="absolute inset-0 bg-red-100 rounded-full"
-            />
-          )}
-          {isPlaying ? <Volume2 size={18} /> : <VolumeX size={18} />}
-        </motion.button>
-      </div>
-
       {/* Dynamic Background & Sakura (Sama seperti sebelumnya) */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <motion.div 
@@ -179,7 +126,7 @@ export function LoginPage() {
             </motion.div>
             
             <h1 className="text-3xl font-serif text-neutral-800 tracking-tight mb-2">
-              Nihon-go <span className="text-red-600 font-light">Portal</span>
+              Nihong <span className="text-red-600 font-light">Jastip</span>
             </h1>
             <div className="flex items-center gap-3">
               <div className="h-[1px] w-8 bg-neutral-200" />
@@ -190,7 +137,7 @@ export function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-2">
             <NihonInput label="Admin Email" type="email" value={email} onChange={(e: any) => setEmail(e.target.value)} />
-            <NihonInput label="Access Key" type="password" value={password} onChange={(e: any) => setPassword(e.target.value)} />
+            <NihonInput label="Password" type="password" value={password} onChange={(e: any) => setPassword(e.target.value)} />
 
             {error && <p className="text-[11px] text-red-500 font-medium text-center pb-4">{error}</p>}
 
