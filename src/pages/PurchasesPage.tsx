@@ -15,7 +15,7 @@ import {
   Plus, Package, Calendar, Trash2, Edit3, CheckCircle2, Circle, X,
   Search, SortAsc, SortDesc, ListPlus, Send,
   LayoutGrid, ClipboardList, Loader2, SearchX, ExternalLink, User,
-  CheckCircle, Clock
+  CheckCircle, Clock, Share2, Copy
 } from "lucide-react";
 import { formatAndAddYear } from "../utils/helpers";
 import { BG } from "../utils/constants";
@@ -32,6 +32,12 @@ type PurchaseItem = {
   note?: string;
   shippingDate: string;
   isDone: boolean;
+};
+
+type ShareConfig = {
+  date: string;
+  pic: string;
+  status: "all" | "pending" | "done";
 };
 
 // --- CONSTANTS ---
@@ -59,15 +65,26 @@ export default function PurchasesPage() {
   const [filter, setFilter] = useState<"all" | "done" | "pending">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  
+  // Modal State
   const [isOpen, setIsOpen] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
+  
   const [editing, setEditing] = useState<PurchaseItem | null>(null);
   const [activeTab, setActiveTab] = useState<"input" | "draft">("input");
 
+  // Form State
   const emptyForm = { name: "", quantity: "", pic: "", customer: "", platform: "", link: "", note: "", shippingDate: "", isDone: false };
   const [form, setForm] = useState(emptyForm);
   const [drafts, setDrafts] = useState<Omit<PurchaseItem, 'id'>[]>([]);
 
-  // Ref untuk fokus balik ke input nama setelah add
+  // Share Config State
+  const [shareConfig, setShareConfig] = useState<ShareConfig>({
+    date: "",
+    pic: "",
+    status: "all"
+  });
+
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   // --- EFFECT ---
@@ -93,7 +110,6 @@ export default function PurchasesPage() {
       customer: prev.customer,
       platform: prev.platform
     }));
-    // Fokuskan kembali ke input nama agar bisa input cepat
     setTimeout(() => nameInputRef.current?.focus(), 100);
   };
 
@@ -194,6 +210,71 @@ export default function PurchasesPage() {
     return { total, done, pending: total - done };
   }, [items]);
 
+  // --- SHARE LOGIC ---
+  const uniqueDates = useMemo(() => [...new Set(items.map(i => i.shippingDate))].sort(), [items]);
+  const uniquePics = useMemo(() => {
+      if(!shareConfig.date) return PIC_OPTIONS;
+      return [...new Set(items.filter(i => i.shippingDate === shareConfig.date).map(i => i.pic))];
+  }, [items, shareConfig.date]);
+
+  const generateShareText = () => {
+    const filteredForShare = items.filter(i => {
+      const matchDate = shareConfig.date ? i.shippingDate === shareConfig.date : true;
+      const matchPic = shareConfig.pic ? i.pic === shareConfig.pic : true;
+      const matchStatus = 
+        shareConfig.status === "all" ? true :
+        shareConfig.status === "done" ? i.isDone :
+        !i.isDone;
+      return matchDate && matchPic && matchStatus;
+    });
+
+    if (filteredForShare.length === 0) return "Tidak ada data untuk filter ini.";
+
+    // 1. Group by Customer (Normalized for Sorting)
+    const groupedByCustomer: Record<string, PurchaseItem[]> = {};
+    filteredForShare.forEach(i => {
+      const custName = i.customer.trim().toUpperCase();
+      if(!groupedByCustomer[custName]) groupedByCustomer[custName] = [];
+      groupedByCustomer[custName].push(i);
+    });
+
+    // 2. Sort Customer Names (A-Z)
+    const sortedCustomers = Object.keys(groupedByCustomer).sort();
+
+    // 3. Build Text
+    let text = `📦 *LAPORAN JASTIP*\n`;
+    if(shareConfig.date) text += `🗓 Tanggal: ${formatAndAddYear(shareConfig.date)}\n`;
+    if(shareConfig.pic) text += `👤 PIC: ${shareConfig.pic}\n`;
+    text += `📊 Status: ${shareConfig.status === 'all' ? 'SEMUA' : shareConfig.status === 'done' ? 'SELESAI' : 'PENDING'}\n`;
+    text += `---------------------------\n`;
+
+    sortedCustomers.forEach(customer => {
+      text += `\n👤 *${customer}*\n`;
+      
+      // Sort Items per Customer (A-Z)
+      const customerItems = groupedByCustomer[customer].sort((a, b) => a.name.localeCompare(b.name));
+
+      customerItems.forEach(item => {
+        const check = item.isDone ? "✅" : "⬜";
+        text += `${check} ${item.name} (${item.quantity})`;
+        if(item.note) text += `\n   └ _Note: ${item.note}_`;
+        text += `\n`;
+      });
+    });
+
+    text += `\n---------------------------\n`;
+    text += `Total: ${filteredForShare.length} Item\n`;
+    return text;
+  };
+
+  const handleSendWhatsapp = () => {
+    const text = generateShareText();
+    // Gunakan API URL yang lebih robust untuk encoding emoji
+    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+    window.open(url, "_blank");
+    setIsShareOpen(false);
+  };
+
   return (
     <div
       className="relative min-h-screen p-4 sm:p-6 lg:p-8"
@@ -242,13 +323,28 @@ export default function PurchasesPage() {
             <input
               type="text"
               placeholder="Cari..."
-              // FIX ZOOM: text-base sm:text-sm
               className="w-full pl-10 pr-4 py-2.5 bg-transparent text-base sm:text-sm outline-none font-medium placeholder:text-slate-400"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
           <div className="flex items-center gap-2 border-t sm:border-t-0 sm:border-l border-slate-200 pl-0 sm:pl-2 pt-2 sm:pt-0 overflow-x-auto no-scrollbar">
+            {/* BUTTON SHARE WHATSAPP */}
+            <button 
+              onClick={() => {
+                const defaultDate = uniqueDates.length > 0 ? uniqueDates[uniqueDates.length - 1] : "";
+                setShareConfig({ date: defaultDate, pic: "", status: "all" });
+                setIsShareOpen(true);
+              }}
+              className="p-2.5 bg-green-50 text-green-600 hover:bg-green-100 rounded-xl transition-colors flex items-center gap-2"
+              title="Share WhatsApp"
+            >
+              <Share2 size={18} />
+              <span className="text-xs font-bold hidden sm:inline">SHARE</span>
+            </button>
+            
+            <div className="w-px h-6 bg-slate-200 mx-1"></div>
+
             <button onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")} className="p-2.5 hover:bg-slate-100 rounded-xl text-slate-500 transition-colors">
               {sortOrder === "asc" ? <SortAsc size={18} /> : <SortDesc size={18} />}
             </button>
@@ -362,7 +458,6 @@ export default function PurchasesPage() {
 
                                       <div className="flex-1 min-w-0">
                                         <div className="flex justify-between items-start gap-2">
-                                          {/* FONT ITEM UTAMA DIPERBESAR */}
                                           <h4 className={`font-bold text-sm leading-tight ${item.isDone ? "text-slate-500 line-through decoration-slate-300" : "text-slate-800"}`}>
                                             {item.name}
                                           </h4>
@@ -444,7 +539,7 @@ export default function PurchasesPage() {
         <Plus size={28} strokeWidth={3} />
       </motion.button>
 
-      {/* --- MODAL --- */}
+      {/* --- MODAL INPUT/EDIT --- */}
       <AnimatePresence>
         {isOpen && (
           // MODAL WRAPPER
@@ -651,6 +746,92 @@ export default function PurchasesPage() {
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* --- MODAL SHARE WHATSAPP --- */}
+      <AnimatePresence>
+        {isShareOpen && (
+           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+             <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setIsShareOpen(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white w-full max-w-lg rounded-2xl shadow-2xl relative flex flex-col overflow-hidden max-h-[90vh]"
+            >
+              <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                 <h3 className="font-bold text-slate-700 flex items-center gap-2"><Share2 size={18} className="text-green-600"/> Bagikan Laporan</h3>
+                 <button onClick={() => setIsShareOpen(false)} className="p-2 hover:bg-slate-200 rounded-full text-slate-400 transition-colors"><X size={18} /></button>
+              </div>
+
+              <div className="p-5 space-y-4 overflow-y-auto">
+                {/* Config Controls */}
+                <div className="grid grid-cols-2 gap-3">
+                   <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">Tanggal</label>
+                      <select 
+                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold outline-none focus:border-green-500"
+                        value={shareConfig.date}
+                        onChange={e => setShareConfig({...shareConfig, date: e.target.value})}
+                      >
+                        <option value="">Semua Tanggal</option>
+                        {uniqueDates.map(d => <option key={d} value={d}>{formatAndAddYear(d)}</option>)}
+                      </select>
+                   </div>
+                   <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">PIC</label>
+                      <select 
+                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold outline-none focus:border-green-500"
+                        value={shareConfig.pic}
+                        onChange={e => setShareConfig({...shareConfig, pic: e.target.value})}
+                      >
+                         <option value="">Semua PIC</option>
+                         {uniquePics.map(p => <option key={p} value={p}>{p}</option>)}
+                      </select>
+                   </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Status Barang</label>
+                  <div className="flex bg-slate-100 p-1 rounded-lg">
+                      {(['all', 'pending', 'done'] as const).map(s => (
+                        <button
+                          key={s}
+                          onClick={() => setShareConfig({...shareConfig, status: s})}
+                          className={`flex-1 py-1.5 text-xs font-bold uppercase rounded-md transition-all ${shareConfig.status === s ? 'bg-white text-green-600 shadow-sm' : 'text-slate-400'}`}
+                        >
+                          {s === 'all' ? 'Semua' : s === 'done' ? 'Selesai' : 'Pending'}
+                        </button>
+                      ))}
+                  </div>
+                </div>
+
+                {/* Preview Box */}
+                <div className="space-y-2">
+                   <label className="text-[10px] font-bold text-slate-500 uppercase flex justify-between">
+                     <span>Preview Pesan</span>
+                     <span className="text-[10px] bg-green-100 text-green-700 px-2 rounded">WhatsApp Format</span>
+                   </label>
+                   <div className="bg-slate-900 text-slate-200 p-4 rounded-xl text-xs font-mono whitespace-pre-wrap max-h-60 overflow-y-auto border border-slate-700 shadow-inner">
+                      {generateShareText()}
+                   </div>
+                </div>
+              </div>
+
+              <div className="p-4 border-t border-slate-100 bg-slate-50/50">
+                 <button 
+                  onClick={handleSendWhatsapp}
+                  className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-green-200"
+                 >
+                    <Send size={18} />
+                    KIRIM KE WHATSAPP
+                 </button>
+              </div>
+            </motion.div>
+           </div>
         )}
       </AnimatePresence>
     </div>
