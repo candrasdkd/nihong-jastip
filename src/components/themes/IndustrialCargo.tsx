@@ -1,3 +1,4 @@
+import { ItemContent } from "../../types";
 import { SVGBarcode, SVGPlane } from "../svg";
 
 export const RenderCargo = ({ indoToJpn, jpnToIndo }) => {
@@ -13,7 +14,7 @@ export const RenderCargo = ({ indoToJpn, jpnToIndo }) => {
         <div className="relative z-10 w-full h-full p-3 font-sans flex flex-col text-black">
             <div className="border-4 border-black h-full w-full flex flex-col bg-white/95 backdrop-blur shadow-[8px_8px_0px_0px_rgba(0,0,0,0.8)]">
                 <div className={`bg-black text-yellow-400 flex justify-between items-center ${isDense ? 'p-2' : 'p-4'}`}>
-                    <h1 className={`${isDense ? 'text-xl' : 'text-2xl'} font-black tracking-tighter uppercase italic`}>LOGISTICS.ID</h1>
+                    <h1 className={`${isDense ? 'text-xl' : 'text-2xl'} font-black tracking-tighter uppercase italic`}>NIHONG JASTIP</h1>
                     {!isDense && <div className="border border-yellow-400 px-2 py-1 text-xs font-bold rounded">PRIORITY</div>}
                 </div>
                 <div className={`flex-1 flex flex-col ${isDense ? 'p-2 gap-2' : 'p-4 gap-4'}`}>
@@ -23,7 +24,7 @@ export const RenderCargo = ({ indoToJpn, jpnToIndo }) => {
                             <SVGPlane className="w-3 h-3 rotate-45" />
                         </div>
                         <div className={sIndo.space}>
-                            {indoToJpn.map(item => (
+                            {indoToJpn.map((item: ItemContent)=> (
                                 <div key={item.id} className={`flex justify-between font-mono font-bold bg-white items-center ${sIndo.pad} ${sIndo.font}`}>
                                     <span>{item.date}</span>
                                     {item.status === 'AVAILABLE' ? <span className="bg-black text-white px-1">QUOTA: {item.value}KG</span> :
@@ -39,7 +40,7 @@ export const RenderCargo = ({ indoToJpn, jpnToIndo }) => {
                             <SVGPlane className="w-3 h-3 rotate-[225deg]" />
                         </div>
                         <div className={sJpn.space}>
-                            {jpnToIndo.map(item => (
+                            {jpnToIndo.map((item: ItemContent)=> (
                                 <div key={item.id} className={`flex justify-between font-mono font-bold bg-white items-center ${sJpn.pad} ${sJpn.font}`}>
                                     <span>{item.date}</span>
                                     {item.status === 'AVAILABLE' ? <span className="bg-black text-white px-1">QUOTA: {item.value}KG</span> :

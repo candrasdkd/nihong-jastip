@@ -1,3 +1,4 @@
+import { ItemContent } from "../../types";
 import { SVGBarcode, SVGPlane } from "../svg";
 
 export const RenderBoardingPass = ({ indoToJpn, jpnToIndo }) => {
@@ -45,7 +46,7 @@ export const RenderBoardingPass = ({ indoToJpn, jpnToIndo }) => {
             {/* Header */}
             <div className={`bg-blue-600 text-white flex justify-between items-center shadow-md z-20 shrink-0 ${config.headerPad}`}>
                 <div>
-                    <h1 className="text-lg font-black tracking-wider leading-none">FLIGHT<br />MANIFEST</h1>
+                    <h1 className="text-lg font-black tracking-wider leading-none">NIHONG<br />JASTIP</h1>
                 </div>
                 <div className="text-right">
                     <p className="text-[9px] opacity-80 uppercase tracking-widest">Jastip Service</p>
@@ -69,7 +70,7 @@ export const RenderBoardingPass = ({ indoToJpn, jpnToIndo }) => {
                     </div>
 
                     <div className={`flex flex-col flex-1 justify-start ${config.gap} overflow-hidden`}>
-                        {indoToJpn.map((item, idx) => (
+                        {indoToJpn.map((item: ItemContent, idx: number) => (
                             <div key={item.id} className={`flex items-center justify-between px-2 bg-white border border-slate-100 rounded shadow-sm ${config.rowPad}`}>
                                 <div className="flex items-center gap-2">
                                     <span className="text-[9px] font-bold text-slate-300 w-3">{idx + 1}.</span>
@@ -114,7 +115,7 @@ export const RenderBoardingPass = ({ indoToJpn, jpnToIndo }) => {
                     </div>
 
                     <div className={`flex flex-col flex-1 justify-start ${config.gap} overflow-hidden`}>
-                        {jpnToIndo.map((item, idx) => (
+                        {jpnToIndo.map((item: ItemContent, idx: number) => (
                             <div key={item.id} className={`flex items-center justify-between px-2 bg-white border border-slate-100 rounded shadow-sm ${config.rowPad}`}>
                                 <div className="flex items-center gap-2">
                                     <span className="text-[9px] font-bold text-slate-300 w-3">{idx + 1}.</span>

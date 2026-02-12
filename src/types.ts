@@ -95,3 +95,10 @@ export type ScheduleItem = {
 };
 
 export type ThemeType = 'BOARDING' | 'NEON' | 'PASTEL' | 'CARGO';
+
+export interface ItemContent {
+  id: number;
+  status: 'AVAILABLE' | 'LIMITED' | 'SOLD OUT';
+  date: string;
+  value: number;
+}
