@@ -15,7 +15,7 @@ import {
   toExtended
 } from '../services/ordersFirebase';
 import { compute, endOfMonth, formatAndAddYear, startOfMonth, toInputDate } from '../utils/helpers';
-import {  ORDER_STATUSES } from '../utils/constants';
+import { ORDER_STATUSES } from '../utils/constants';
 
 // ===== ICONS =====
 const IconPlus = (p: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M5 12h14" /><path d="M12 5v14" /></svg>);
@@ -23,11 +23,12 @@ const IconFilter = (p: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www
 const IconInvoice = (p: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><line x1="10" y1="9" x2="8" y2="9" /></svg>);
 const IconChevronDown = (p: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="m6 9 6 6 6-6" /></svg>);
 const IconSearch = (p: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>);
-const IconTrendingUp = (p: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>);
 const IconBox = (p: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>);
 const IconTrash = (p: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>);
 const IconEdit = (p: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>);
-
+const IconX = (p: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>);
+const IconAlertCircle = (p: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>);
+const IconCheckCircle = (p: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>);
 
 
 // ===== UI SUB-COMPONENTS =====
@@ -60,6 +61,32 @@ function Avatar({ name }: { name: string }) {
   );
 }
 
+// ===== TOAST COMPONENT =====
+type ToastType = { message: string; type: 'success' | 'error'; id: number };
+
+function ToastContainer({ toasts, removeToast }: { toasts: ToastType[]; removeToast: (id: number) => void }) {
+  return (
+    <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none">
+      {toasts.map((toast) => (
+        <div
+          key={toast.id}
+          className={`
+            pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border animate-in slide-in-from-right-10 duration-300
+            ${toast.type === 'error' ? 'bg-white border-red-200 text-red-700' : 'bg-slate-900 text-white border-slate-800'}
+          `}
+        >
+          {toast.type === 'error' ? <IconAlertCircle className="w-5 h-5 shrink-0" /> : <IconCheckCircle className="w-5 h-5 shrink-0" />}
+          <span className="text-sm font-medium">{toast.message}</span>
+          <button onClick={() => removeToast(toast.id)} className={`ml-4 p-1 rounded-full hover:bg-black/10 transition-colors`}>
+             <IconX className="w-4 h-4" />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+
 // ===== MAIN PAGE COMPONENT =====
 export function OrdersPage({ orders, setOrders, customers, unitPrice }: {
   orders: ExtendedOrder[];
@@ -84,27 +111,24 @@ export function OrdersPage({ orders, setOrders, customers, unitPrice }: {
   const [showInvoice, setShowInvoice] = useState<{ show: boolean; order?: ExtendedOrder; itemIds?: string[] }>({ show: false });
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [showFilterModal, setShowFilterModal] = useState(false);
+  
+  // Toast State
+  const [toasts, setToasts] = useState<ToastType[]>([]);
 
   // Derived State
   const selectedOrders = useMemo(() => orders.filter(o => selectedIds.includes(o.id)), [orders, selectedIds]);
-  const sameCustomer = selectedOrders.length > 0 && selectedOrders.every(o => o.namaPelanggan === selectedOrders[0]?.namaPelanggan);
   const filterCount = (statusFilter ? 1 : 0) + (dateFrom !== defaultFrom ? 1 : 0) + (dateTo !== defaultTo ? 1 : 0);
 
-  // Stats Calculation
-  const stats = useMemo(() => {
-    let revenue = 0;
-    let profit = 0;
-    let count = 0;
-    orders.forEach(o => {
-      const c = compute(o, unitPrice);
-      if (o.status !== 'Dibatalkan') {
-        revenue += c.totalPembayaran;
-        profit += c.totalKeuntungan;
-        count++;
-      }
-    });
-    return { revenue, profit, count };
-  }, [orders, unitPrice]);
+  // Toast Helper
+  const showToast = (message: string, type: 'success' | 'error') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { message, type, id }]);
+    setTimeout(() => removeToast(id), 4000); // Auto remove after 4s
+  };
+
+  const removeToast = (id: number) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
 
   // Data Fetching
   useEffect(() => {
@@ -129,20 +153,60 @@ export function OrdersPage({ orders, setOrders, customers, unitPrice }: {
   async function handleDelete(id: string) {
     if (!confirm('Yakin ingin menghapus pesanan ini secara permanen?')) return;
     await deleteOrder(id);
+    showToast('Pesanan berhasil dihapus', 'success');
   }
   
   const handleApplyFilters = (p: { status: string; from: string; to: string }) => {
     setStatusFilter(p.status); setDateFrom(p.from); setDateTo(p.to); setShowFilterModal(false);
   };
 
+  // --- REFACTORED INVOICE CLICK (NO ALERTS) ---
   const handleInvoiceClick = () => {
-    if (selectedOrders.length === 0) { alert('Pilih minimal satu pesanan.'); return; }
-    if (!sameCustomer) { alert('Invoice hanya bisa dibuat untuk pesanan dari pelanggan yang sama.'); return; }
+    // 1. Cek Minimal Satu
+    if (selectedOrders.length === 0) { 
+        showToast('Pilih minimal satu pesanan untuk membuat invoice.', 'error');
+        return; 
+    }
+
+    // 2. Cek Pelanggan Sama
+    const sameCustomer = selectedOrders.every(o => o.namaPelanggan === selectedOrders[0]?.namaPelanggan);
+    if (!sameCustomer) { 
+        showToast('Pesanan harus dari pelanggan yang sama.', 'error');
+        return; 
+    }
+
+    // 3. Cek Status Sama
+    const sameStatus = selectedOrders.every(o => o.status === selectedOrders[0]?.status);
+    if (!sameStatus) {
+        showToast('Status pesanan yang dipilih harus sama semua.', 'error');
+        return;
+    }
+
     setShowInvoice({ show: true, order: selectedOrders[0], itemIds: selectedIds });
   };
 
+  const handleSubmitOrder = async (val: any) => {
+      try {
+        const dto = fromExtended(val);
+        if (editing?.id) {
+            await updateOrder(editing.id, dto, unitPrice);
+            showToast('Pesanan berhasil diperbarui', 'success');
+        } else {
+            await createOrder(dto, unitPrice);
+            showToast('Pesanan berhasil dibuat', 'success');
+        }
+        setShowForm(false);
+      } catch (err) {
+        showToast('Gagal menyimpan pesanan', 'error');
+        console.error(err);
+      }
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50/50 pb-20 font-sans text-slate-900">
+    <div className="min-h-screen bg-slate-50/50 pb-20 font-sans text-slate-900 relative">
+      {/* Toast Container */}
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
+
       {/* 1. Header Section */}
       <div className="bg-white border-b border-slate-200 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -181,10 +245,11 @@ export function OrdersPage({ orders, setOrders, customers, unitPrice }: {
               {filterCount > 0 && <span className="ml-2 bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded-full">{filterCount}</span>}
             </Button>
             
+            {/* DESKTOP ONLY INVOICE BUTTON */}
             {selectedIds.length > 0 && (
-              <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-200">
+              <div className="hidden sm:flex items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-200">
                 <div className="h-6 w-px bg-slate-300 mx-1"></div>
-                <span className="text-sm font-medium text-slate-600 hidden md:inline">{selectedIds.length} dipilih</span>
+                <span className="text-sm font-medium text-slate-600">{selectedIds.length} dipilih</span>
                 <Button onClick={handleInvoiceClick} variant="outline" className="border-slate-300 text-slate-700 hover:bg-slate-50">
                   <IconInvoice className="w-4 h-4 mr-2" /> Invoice
                 </Button>
@@ -261,12 +326,7 @@ export function OrdersPage({ orders, setOrders, customers, unitPrice }: {
           customers={customers} 
           initial={editing || undefined} 
           onClose={() => setShowForm(false)} 
-          onSubmit={async (val) => { 
-            const dto = fromExtended(val as any); 
-            if (editing?.id) await updateOrder(editing.id, dto, unitPrice); 
-            else await createOrder(dto, unitPrice); 
-            setShowForm(false); 
-          }} 
+          onSubmit={handleSubmitOrder}
           existing={orders} 
           unitPrice={unitPrice} 
         />
@@ -293,7 +353,18 @@ export function OrdersPage({ orders, setOrders, customers, unitPrice }: {
         />
       )}
 
-      {/* Mobile FAB */}
+      {/* --- NEW: MOBILE FLOATING INVOICE BUTTON (STACKED ABOVE ADD BUTTON) --- */}
+      {selectedIds.length > 0 && (
+         <button
+           onClick={handleInvoiceClick}
+           className="sm:hidden fixed bottom-36 right-6 z-40 h-12 px-5 bg-white text-slate-800 border border-slate-200 rounded-full shadow-xl shadow-slate-200/50 flex items-center gap-2 active:scale-95 transition-all animate-in slide-in-from-bottom-5 duration-200"
+         >
+           <IconInvoice className="w-5 h-5 text-blue-600" />
+           <span className="font-bold text-sm">Invoice ({selectedIds.length})</span>
+         </button>
+      )}
+
+      {/* Mobile FAB (Create Order) */}
       <button
         onClick={() => { setEditing(null); setShowForm(true); }}
         className="sm:hidden fixed bottom-20 right-6 h-14 w-14 bg-slate-900 text-white rounded-full shadow-xl shadow-slate-900/30 flex items-center justify-center active:scale-95 transition-transform z-40"
