@@ -22,7 +22,6 @@ import { listenCustomers } from './services/customersFirebase';
 import { subscribeOrders, toExtended } from './services/ordersFirebase';
 import { listenAuth, logout } from './services/authFirebase';
 import { endOfMonth, startOfMonth, toInputDate } from './utils/helpers';
-
 // Icon Sederhana
 const LogoutIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -252,7 +251,7 @@ export default function App() {
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
           >
-            {tab === 'dashboard' && <Dashboard orders={orders} customers={customers} />}
+            {tab === 'dashboard' && <Dashboard orders={orders} customers={customers} onSeeAllOrders={() => setTab('orders')}/>}
             {tab === 'orders' && (
               <OrdersPage
                 customers={customers}

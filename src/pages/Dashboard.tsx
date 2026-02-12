@@ -9,38 +9,105 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  BarChart,
-  Bar,
   Legend,
-  LineChart,
   Line,
+  ComposedChart,
+  Area,
 } from 'recharts';
-import { BG, DONE_SET, GRID, INK, JAPAN_RED } from '../utils/constants';
+import { DONE_SET, GRID, INK, JAPAN_RED } from '../utils/constants';
+import { 
+  TrendingUp, 
+  TrendingDown, 
+  Users, 
+  ShoppingBag, 
+  Wallet, 
+  Activity,
+  ArrowRight
+} from 'lucide-react';
+
+// --- SUB-COMPONENTS ---
 
 function GrowthBadge({ value }: { value: number }) {
   const positive = value >= 0;
   return (
-    <span
-      className={`text-xs font-medium px-2 py-1 rounded-full ${positive
-          ? 'bg-emerald-100 text-emerald-700'
-          : 'bg-red-100 text-red-700'
-        }`}
-    >
-      {positive ? '▲' : '▼'} {Math.abs(value).toFixed(1)}%
-    </span>
+    <div className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border ${
+      positive
+        ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+        : 'bg-rose-50 text-rose-700 border-rose-100'
+    }`}>
+      {positive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+      <span>{Math.abs(value).toFixed(1)}%</span>
+    </div>
   );
 }
+
+function StatCard({ 
+  label, 
+  value, 
+  subValue, 
+  icon: Icon, 
+  trend 
+}: { 
+  label: string; 
+  value: React.ReactNode; 
+  subValue?: string; 
+  icon: any; 
+  trend?: number; 
+}) {
+  return (
+    <Card className="p-5 bg-white rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+      <div className="flex justify-between items-start mb-4">
+        <div className="p-2.5 bg-slate-50 rounded-xl text-slate-500">
+          <Icon size={20} />
+        </div>
+        {trend !== undefined && <GrowthBadge value={trend} />}
+      </div>
+      <div>
+        <p className="text-sm font-medium text-slate-500 mb-1">{label}</p>
+        <h3 className="text-2xl font-bold text-slate-800 tracking-tight">{value}</h3>
+        {subValue && <p className="text-xs text-slate-400 mt-1">{subValue}</p>}
+      </div>
+    </Card>
+  );
+}
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white p-4 border border-slate-100 shadow-xl rounded-xl text-sm z-50">
+        <p className="font-semibold text-slate-800 mb-2 border-b border-slate-100 pb-2">{label}</p>
+        {payload.map((entry: any, index: number) => (
+          <div key={index} className="flex items-center gap-2 mb-1 last:mb-0">
+            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
+            <span className="text-slate-500 capitalize">{entry.name}:</span>
+            <span className="font-medium ml-auto">
+              {entry.name.includes('Pendapatan') || entry.name.includes('Profit') 
+                ? formatIDR(entry.value) 
+                : entry.value}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
+
+// --- MAIN COMPONENT ---
+
 export function Dashboard({
   orders,
   customers,
+  onSeeAllOrders, // <--- 1. Tambahkan prop ini
 }: {
   orders: Order[];
   customers: Customer[];
+  onSeeAllOrders?: () => void; // <--- 2. Definisikan tipenya (optional)
 }) {
   const [period, setPeriod] = useState<PeriodType>('12m');
 
-  /* ========= FILTER ========= */
-  const filteredOrders = useMemo(() => {
+  /* ========= DATA PROCESSING ========= */
+  const { monthlyData, kpi, recentOrders } = useMemo(() => {
     const now = new Date();
     const from = new Date();
 
@@ -48,17 +115,17 @@ export function Dashboard({
     if (period === '3m') from.setMonth(now.getMonth() - 3);
     if (period === '12m') from.setMonth(now.getMonth() - 12);
 
-    return orders.filter((o: any) => {
-      const d = new Date(o?.tanggal);
-      return d >= from && d <= now;
-    });
-  }, [orders, period]);
+    // 1. Filter Orders
+    const _filtered = orders
+      .filter((o: any) => {
+        const d = new Date(o?.tanggal);
+        return d >= from && d <= now;
+      })
+      .sort((a: any, b: any) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime());
 
-  /* ========= MONTHLY DATA ========= */
-  const monthlyData = useMemo(() => {
+    // 2. Group Monthly
     const map = new Map<string, MonthPoint>();
-
-    for (const o of filteredOrders) {
+    for (const o of _filtered) {
       const key = getMonthKey((o as any).tanggal);
       if (!key) continue;
 
@@ -72,75 +139,64 @@ export function Dashboard({
           profit: 0,
         });
       }
-
       const pt = map.get(key)!;
       pt.total += getOrderRevenue(o);
       pt.profit += getOrderProfit(o);
       pt.count += 1;
     }
 
-    return Array.from(map.values()).sort((a, b) =>
-      a.key.localeCompare(b.key)
-    );
-  }, [filteredOrders]);
+    const _monthly = Array.from(map.values()).sort((a, b) => a.key.localeCompare(b.key));
 
-  /* ========= KPI ========= */
-  const activeOrders = filteredOrders.filter(
-    (o: any) => !DONE_SET.has(String(o?.status || ''))
-  ).length;
+    // 3. KPI Calculations
+    const activeCount = _filtered.filter((o: any) => !DONE_SET.has(String(o?.status || ''))).length;
+    const revenue = _monthly.reduce((s, m) => s + m.total, 0);
+    const profit = _monthly.reduce((s, m) => s + m.profit, 0);
+    const count = _monthly.reduce((s, m) => s + m.count, 0);
+    
+    // Trend logic
+    const lastMonthRev = _monthly.length ? _monthly[_monthly.length-1].total : 0;
+    const avgRev = count ? revenue / _monthly.length : 0;
+    const trendRev = avgRev ? ((lastMonthRev - avgRev) / avgRev) * 100 : 0;
 
-  const totalRevenue = monthlyData.reduce((s, m) => s + m.total, 0);
-  const totalProfit = monthlyData.reduce((s, m) => s + m.profit, 0);
-  const totalOrders = monthlyData.reduce((s, m) => s + m.count, 0);
-
-  const avgRevenue = totalOrders ? totalRevenue / totalOrders : 0;
-  const margin = totalRevenue ? (totalProfit / totalRevenue) * 100 : 0;
-
-  const bestMonth =
-    monthlyData.length > 0
-      ? monthlyData.reduce((max, m) =>
-        m.total > max.total ? m : max
-      )
-      : null;
-
-  /* ========= GROWTH ========= */
-  const half = Math.floor(monthlyData.length / 2);
-  const prevRevenue = monthlyData
-    .slice(0, half)
-    .reduce((s, m) => s + m.total, 0);
-
-  const growth = prevRevenue
-    ? ((totalRevenue - prevRevenue) / prevRevenue) * 100
-    : 0;
+    return {
+      monthlyData: _monthly,
+      recentOrders: _filtered.slice(0, 5), // Top 5 recent
+      kpi: {
+        activeOrders: activeCount,
+        revenue,
+        profit,
+        totalOrders: count,
+        margin: revenue ? (profit / revenue) * 100 : 0,
+        growth: trendRev
+      }
+    };
+  }, [orders, period]);
 
   return (
     <div className="min-h-screen bg-slate-50/50 pb-20 font-sans text-slate-900">
-      <div className="relative w-full max-w-[1600px] mx-auto space-y-10 px-4">
+      <div className="relative w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
-        {/* Header + Filter */}
-        <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6">
+        {/* --- HEADER --- */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <h1 className="text-3xl font-semibold text-gray-800">
-              Dasbor Utama
-            </h1>
-            <p className="text-sm text-gray-500">
-              Insight bisnis & performa operasional
-            </p>
+            <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Overview Bisnis</h1>
+            <p className="text-slate-500 mt-1">Pantau performa pendapatan dan operasional Anda.</p>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-sm self-start md:self-auto">
             {[
               { label: '30 Hari', value: '30d' },
               { label: '3 Bulan', value: '3m' },
-              { label: '12 Bulan', value: '12m' },
+              { label: '1 Tahun', value: '12m' },
             ].map((p) => (
               <button
                 key={p.value}
                 onClick={() => setPeriod(p.value as PeriodType)}
-                className={`px-4 py-1.5 rounded-full text-sm transition ${period === p.value
-                    ? 'bg-red-600 text-white'
-                    : 'bg-white border border-neutral-300 text-neutral-600'
-                  }`}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  period === p.value
+                    ? 'bg-slate-900 text-white shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                }`}
               >
                 {p.label}
               </button>
@@ -148,140 +204,169 @@ export function Dashboard({
           </div>
         </div>
 
-        {/* KPI GRID */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-
-          <Card className="p-6 bg-white rounded-3xl shadow-sm">
-            <div className="text-sm text-gray-500">Pesanan Aktif</div>
-            <div className="text-2xl font-semibold mt-2">
-              {activeOrders}
-            </div>
-          </Card>
-
-          <Card className="p-6 bg-white rounded-3xl shadow-sm">
-            <div className="text-sm text-gray-500">Total Pelanggan</div>
-            <div className="text-2xl font-semibold mt-2">
-              {customers.length}
-            </div>
-          </Card>
-
-          <Card className="p-6 bg-white rounded-3xl shadow-sm">
-            <div className="flex justify-between">
-              <div className="text-sm text-gray-500">
-                Total Pendapatan
-              </div>
-              <GrowthBadge value={growth} />
-            </div>
-            <div className="text-2xl font-semibold mt-2">
-              {formatIDR(totalRevenue)}
-            </div>
-          </Card>
-
-          <Card className="p-6 bg-white rounded-3xl shadow-sm">
-            <div className="text-sm text-gray-500">Margin</div>
-            <div className="text-2xl font-semibold mt-2">
-              {margin.toFixed(1)}%
-            </div>
-          </Card>
-
-          <Card className="p-6 bg-white rounded-3xl shadow-sm">
-            <div className="text-sm text-gray-500">Avg / Order</div>
-            <div className="text-2xl font-semibold mt-2">
-              {formatIDR(avgRevenue)}
-            </div>
-          </Card>
-
-          <Card className="p-6 bg-white rounded-3xl shadow-sm border-l-4 border-red-600">
-            <div className="text-sm text-gray-500">
-              Bulan Terbaik
-            </div>
-            <div className="text-lg font-semibold mt-2">
-              {bestMonth ? bestMonth.label : '-'}
-            </div>
-            <div className="text-sm text-gray-500">
-              {bestMonth ? formatIDR(bestMonth.total) : ''}
-            </div>
-          </Card>
-
+        {/* --- KPI STATS --- */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          <StatCard
+            label="Total Pendapatan"
+            value={formatIDR(kpi.revenue)}
+            subValue="Kotor sebelum biaya"
+            icon={Wallet}
+            trend={kpi.growth}
+          />
+          <StatCard
+            label="Total Profit"
+            value={formatIDR(kpi.profit)}
+            subValue={`Margin: ${kpi.margin.toFixed(1)}%`}
+            icon={TrendingUp}
+          />
+          <StatCard
+            label="Pesanan Aktif"
+            value={kpi.activeOrders}
+            subValue="Perlu diproses"
+            icon={Activity}
+          />
+          <StatCard
+            label="Total Pelanggan"
+            value={customers.length}
+            subValue={`Dari ${kpi.totalOrders} total pesanan`}
+            icon={Users}
+          />
         </div>
 
-        {/* CHART */}
-        <Card className="p-8 bg-white rounded-3xl shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-800 mb-6">
-            Grafik Tren Bulanan
-          </h2>
-
-          <div className="h-[360px] sm:h-[420px] xl:h-[520px]">
-
-            {/* 📱 MOBILE → LINE */}
-            <div className="block md:hidden h-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={monthlyData}>
-                  <CartesianGrid stroke={GRID} strokeDasharray="3 3" />
-                  <XAxis dataKey="label" tick={{ fill: INK, fontSize: 12 }} />
-                  <YAxis
-                    tickFormatter={(v: number) => formatIDR(v)}
-                    tick={{ fill: INK }}
-                  />
-                  <Tooltip
-                    formatter={(value: any) => formatIDR(value as number)}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="total"
-                    stroke={JAPAN_RED}
-                    strokeWidth={3}
-                    dot={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+        {/* --- MAIN CONTENT GRID --- */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          
+          {/* CHART SECTION (2/3 Width) */}
+          <Card className="xl:col-span-2 p-6 bg-white rounded-3xl shadow-sm border border-slate-100 flex flex-col h-[500px]">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="text-lg font-bold text-slate-800">Analisis Pendapatan</h2>
+                <p className="text-sm text-slate-500">Perbandingan omzet vs jumlah pesanan</p>
+              </div>
+              <div className="hidden sm:flex items-center gap-2 text-sm text-slate-500">
+                <span className="flex items-center gap-1">
+                  <span className="w-3 h-3 rounded-full bg-slate-800"></span> Pendapatan
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-3 h-3 rounded-full bg-red-500"></span> Pesanan
+                </span>
+              </div>
             </div>
 
-            {/* 💻 DESKTOP → BAR DUAL AXIS */}
-            <div className="hidden md:block h-full">
+            <div className="flex-1 w-full min-h-0">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={monthlyData}
-                  margin={{ top: 20, right: 40, left: 20, bottom: 10 }}
-                >
-                  <CartesianGrid stroke={GRID} strokeDasharray="3 3" />
-                  <XAxis dataKey="label" tick={{ fill: INK }} />
-                  <YAxis yAxisId="left" tick={{ fill: INK }} />
-                  <YAxis
+                <ComposedChart data={monthlyData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={INK} stopOpacity={0.1}/>
+                      <stop offset="95%" stopColor={INK} stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis 
+                    dataKey="label" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: '#64748b', fontSize: 12 }} 
+                    dy={10}
+                  />
+                  <YAxis 
+                    yAxisId="left"
+                    axisLine={false} 
+                    tickLine={false} 
+                    tickFormatter={(v) => formatIDR(v)}
+                    tick={{ fill: '#64748b', fontSize: 12 }} 
+                  />
+                  <YAxis 
                     yAxisId="right"
                     orientation="right"
-                    tickFormatter={(v: number) => formatIDR(v)}
-                    tick={{ fill: INK }}
+                    axisLine={false} 
+                    tickLine={false}
+                    tick={{ fill: '#64748b', fontSize: 12 }} 
                   />
-                  <Tooltip
-                    formatter={(value: any, name: string) =>
-                      name.includes('Pendapatan')
-                        ? formatIDR(value as number)
-                        : value
-                    }
-                  />
-                  <Legend />
-                  <Bar
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend iconType="circle" />
+                  
+                  <Area
                     yAxisId="left"
+                    type="monotone"
+                    dataKey="total"
+                    name="Pendapatan"
+                    stroke={INK}
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#colorTotal)"
+                  />
+                  
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
                     dataKey="count"
                     name="Jumlah Pesanan"
-                    fill={JAPAN_RED}
-                    radius={[6, 6, 0, 0]}
+                    stroke={JAPAN_RED}
+                    strokeWidth={3}
+                    dot={{ r: 4, fill: 'white', strokeWidth: 2, stroke: JAPAN_RED }}
+                    activeDot={{ r: 6 }}
                   />
-                  <Bar
-                    yAxisId="right"
-                    dataKey="total"
-                    name="Pendapatan (Rp)"
-                    fill={INK}
-                    radius={[6, 6, 0, 0]}
-                  />
-                </BarChart>
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
+          </Card>
 
+          {/* SIDE PANEL: RECENT ORDERS (1/3 Width) */}
+          <div className="h-[500px]">
+            <Card className="p-6 bg-white rounded-3xl shadow-sm border border-slate-100 h-full flex flex-col">
+              <div className="flex items-center justify-between mb-6 shrink-0">
+                <h2 className="text-lg font-bold text-slate-800">Pesanan Terbaru</h2>
+                
+                {/* 3. Tombol sekarang memiliki onClick */}
+                <button 
+                  onClick={onSeeAllOrders}
+                  className="text-sm font-medium text-red-600 hover:text-red-700 flex items-center gap-1 cursor-pointer transition-colors active:scale-95"
+                >
+                  Lihat Semua <ArrowRight size={14} />
+                </button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto pr-1 space-y-4 scrollbar-thin scrollbar-thumb-slate-200">
+                {recentOrders.length > 0 ? recentOrders.map((order: any, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-xl transition-colors border border-transparent hover:border-slate-100 group">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-white group-hover:shadow-sm transition-all">
+                        <ShoppingBag size={18} />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-slate-700 text-sm">
+                          {order.namaPelanggan || 'Pelanggan Umum'}
+                        </div>
+                        <div className="text-xs text-slate-400">
+                          {new Date(order.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold text-slate-800 text-sm">
+                        {formatIDR(getOrderRevenue(order))}
+                      </div>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full ${
+                        DONE_SET.has(order.status) 
+                          ? 'bg-emerald-100 text-emerald-700' 
+                          : 'bg-amber-100 text-amber-700'
+                      }`}>
+                        {order.status}
+                      </span>
+                    </div>
+                  </div>
+                )) : (
+                  <div className="text-center py-10 text-slate-400 text-sm">
+                    Belum ada data untuk periode ini.
+                  </div>
+                )}
+              </div>
+            </Card>
           </div>
-        </Card>
 
+        </div>
       </div>
     </div>
   );
