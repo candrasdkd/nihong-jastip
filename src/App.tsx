@@ -22,6 +22,7 @@ import { listenCustomers } from './services/customersFirebase';
 import { subscribeOrders, toExtended } from './services/ordersFirebase';
 import { listenAuth, logout } from './services/authFirebase';
 import { endOfMonth, startOfMonth, toInputDate } from './utils/helpers';
+import StoryGeneratorDynamic from './pages/StoryGeneratorPage';
 // Icon Sederhana
 const LogoutIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -83,7 +84,7 @@ const LogoutModal = ({ isOpen, onClose, onConfirm }: { isOpen: boolean; onClose:
 };
 
 export default function App() {
-  const [tab, setTab] = useState<'dashboard' | 'orders' | 'customers' | 'purchase' | 'cash'>('dashboard');
+  const [tab, setTab] = useState<'dashboard' | 'orders' | 'customers' | 'purchase' | 'cash' | 'generator'>('dashboard');
   const [orders, setOrders] = useState<Order[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [unitPrice, setUnitPrice] = useState<number>(100_000);
@@ -200,7 +201,7 @@ export default function App() {
 
           {/* Navigasi Desktop */}
           <nav className="hidden md:flex items-center gap-1">
-            {(['dashboard', 'orders', 'customers', 'purchase', 'cash'] as const).map((t) => (
+            {(['dashboard', 'orders', 'customers', 'purchase', 'cash', 'generator'] as const).map((t) => (
               <TabButton key={t} current={tab} setTab={setTab} id={t}>
                 {t === 'cash' ? 'Kas' : t.charAt(0).toUpperCase() + t.slice(1)}
               </TabButton>
@@ -263,6 +264,7 @@ export default function App() {
             {tab === 'customers' && <CustomersPage />}
             {tab === 'purchase' && <PurchasesPage />}
             {tab === 'cash' && <LedgerPage />}
+            {tab === 'generator' && <StoryGeneratorDynamic />}
           </motion.div>
         </AnimatePresence>
       </main>

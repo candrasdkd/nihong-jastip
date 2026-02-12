@@ -86,3 +86,12 @@ export type ShareConfig = {
 };
 
 export type Option = { label: string; value: string };
+
+export type ScheduleItem = {
+  id: number;
+  date: string;
+  status: 'SOLD OUT' | 'LIMITED' | 'AVAILABLE';
+  value?: string;
+};
+
+export type ThemeType = 'BOARDING' | 'NEON' | 'PASTEL' | 'CARGO';

@@ -1,4 +1,4 @@
-type TabId = 'dashboard' | 'orders' | 'customers' | 'purchase' | 'cash';
+type TabId = 'dashboard' | 'orders' | 'customers' | 'purchase' | 'cash' | 'generator';
 
 export function BottomTabBar({
     current,
@@ -41,6 +41,7 @@ export function BottomTabBar({
                     <Item id="customers" label="Konsumen" Icon={IconUsers} />
                     <Item id="purchase" label="Pembelian" Icon={IconCalculator} />
                     <Item id="cash" label="Kas" Icon={IconCash} />
+                    {/* <Item id="generator" label="Generator" Icon={IconGenerator} /> */}
                 </div>
             </nav>
         </footer>
@@ -93,6 +94,15 @@ function IconCash({ className = '' }) {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
             <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
                 d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8v8m0-8C9.243 4 7 5.343 7 7.5S9.243 11 12 11s5-1.343 5-3.5S14.757 4 12 4zM5 19h14a2 2 0 0 0 2-2v-5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2z" />
+        </svg>
+    );
+}
+
+function IconGenerator({ className = '' }) {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
+            <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+                d="M12 2a10 10 0 1 0 10 10A10.011 10.011 0 0 0 12 2zm1 14.5v3a1.5 1.5 0 0 1-3 0v-3a1.5 1.5 0 0 1 3 0zm-1-11a2 2 0 0 1 2 2c0 .512-.184.923-.553 1.3-.368.376-.955.7-1.447 1.113-.493.413-.8.923-.8 1.587v.4a1 1 0 0 1-2 0v-.4c0-1.1.484-2.034 1.197-2.717.713-.683 1.62-1.1 2.203-1.613.583-.513.9-1.184.9-2a2 2 0 0 0-4 0 1 1 0 0 1-2 0 4 4 0 0 1 8 0z" />
         </svg>
     );
 }
