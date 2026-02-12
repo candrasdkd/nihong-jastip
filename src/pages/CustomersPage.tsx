@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card } from '../components/ui/Card';
-import { Input } from '../components/ui/Input';
-import { Button } from '../components/ui/Button';
+import { Button } from '../components/ui/Button'; // Pastikan ini mengarah ke Button baru
 import { CustomerFormModal } from '../components/CustomerFormModal';
 import { db } from '../lib/firebase';
 import {
@@ -16,25 +15,24 @@ import {
   serverTimestamp,
   DocumentData,
 } from 'firebase/firestore';
-import { BG } from '../utils/constants';
 import { Customer } from '../types';
 import { openWhatsApp } from '../utils/helpers';
 
 // ---- Konstanta ----
 const COL = 'customer';
 
-// ---- Ikon SVG (Ditambah IconSearch & IconEmpty) ----
+// ---- Ikon SVG ----
 const IconUserPlus = (props: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="19" y1="8" x2="19" y2="14" /><line x1="22" y1="11" x2="16" y2="11" /></svg>);
 const IconEdit = (props: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /><path d="m15 5 4 4" /></svg>);
 const IconTrash = (props: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M3 6h18" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>);
 const IconSearch = (props: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>);
 const IconWhatsApp = (props: React.SVGProps<SVGSVGElement>) => (<svg viewBox="0 0 24 24" fill="currentColor" {...props}><path d="M20.52 3.48A11.94 11.94 0 0 0 12.06 0C5.47.03.15 5.36.18 11.95a11.87 11.87 0 0 0 1.7 6.17L0 24l5.99-1.85a11.93 11.93 0 0 0 6.07 1.66h.01c6.59-.04 11.91-5.37 11.93-11.96a11.9 11.9 0 0 0-3.48-8.37Zm-8.46 18.3a9.9 9.9 0 0 1-5.05-1.39l-.36-.21-3.56 1.1 1.12-3.47-.23-.36a9.9 9.9 0 1 1 8.08 4.33ZM17.2 14.3c-.3-.16-1.78-.88-2.05-.98-.27-.1-.47-.16-.66.16-.2.32-.77.98-.95 1.18-.18.2-.35.23-.65.08-.3-.16-1.27-.47-2.43-1.5-.9-.8-1.5-1.8-1.67-2.1-.17-.32-.02-.49.13-.64.13-.12.3-.32.45-.48.15-.16.2-.27.3-.45.1-.18.05-.34-.02-.48-.08-.16-.66-1.6-.9-2.2-.24-.58-.48-.5-.66-.51h-.56c-.18 0-.48.07-.73.34-.25.27-.96.94-.96 2.3 0 1.36.99 2.67 1.12 2.85.14.18 1.96 2.98 4.75 4.18.66.28 1.18.45 1.58.58.66.21 1.27.18 1.75.11.53-.08 1.78-.73 2.04-1.44.25-.7.25-1.3.18-1.44-.08-.13-.27-.2-.57-.36Z" /></svg>);
 const IconEmpty = (props: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="text-slate-300" {...props}><circle cx="12" cy="12" r="10" /><path d="M16 16s-1.5-2-4-2-4 2-4 2" /><line x1="9" y1="9" x2="9.01" y2="9" /><line x1="15" y1="9" x2="15.01" y2="9" /></svg>);
+const IconMapPin = (props: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>);
 
 // ---- Komponen UI Kecil ----
 const Avatar = ({ name }: { name: string }) => {
   const initial = name ? name.charAt(0).toUpperCase() : '?';
-  // Warna pastel acak bisa ditambahkan, di sini kita pakai Indigo statis agar bersih
   return (
     <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-lg shrink-0 border border-indigo-200">
       {initial}
@@ -112,15 +110,16 @@ export function CustomersPage() {
 
         {/* Header & Stats */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-          <div>
+          <div className="pt-6 sm:pt-0">
             <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Pelanggan</h1>
             <p className="text-slate-500 mt-1">
               Total <strong className="text-slate-900">{customers.length}</strong> pelanggan terdaftar
             </p>
           </div>
+          {/* Main Button: Menggunakan variant="primary" default (Orange) atau override class jika ingin tetap Indigo */}
           <Button
             onClick={() => { setEditing(null); setShowForm(true); }}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white hidden sm:flex items-center gap-2 shadow-sm transition-all"
+            className="hidden sm:flex bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200"
           >
             <IconUserPlus className="w-5 h-5" />
             <span>Tambah Baru</span>
@@ -144,7 +143,7 @@ export function CustomersPage() {
         </Card>
 
         {/* Content Area */}
-        <Card className="bg-white shadow-lg shadow-slate-200/50 border border-slate-100 overflow-hidden">
+        <div className="bg-transparent sm:bg-white sm:shadow-lg sm:shadow-slate-200/50 sm:border sm:border-slate-100 sm:rounded-xl overflow-hidden">
 
           {/* Desktop Table */}
           <div className="hidden sm:block overflow-x-auto">
@@ -195,27 +194,35 @@ export function CustomersPage() {
                       )}
                     </td>
                     <td className="px-6 py-3 text-right">
+                      {/* ACTION BUTTONS DESKTOP: Pakai size="icon" agar kotak rapi */}
                       <div className="flex items-center justify-end gap-2 opacity-80 group-hover:opacity-100">
                         <Button
+                          size="icon"
+                          variant="ghost"
                           onClick={() => openWhatsApp(c.telpon, makeDefaultWaMsg(c.nama))}
                           disabled={!c.telpon}
-                          className="bg-green-50 text-green-600 hover:bg-green-100 hover:text-green-700 p-2 rounded-lg border border-green-100 disabled:opacity-30"
+                          className="text-green-600 hover:bg-green-50 hover:text-green-700 border border-transparent hover:border-green-100"
                           title="Chat WhatsApp"
                         >
                           <IconWhatsApp className="w-4 h-4" />
                         </Button>
+                        
                         <div className="h-4 w-px bg-slate-200 mx-1"></div>
+                        
                         <Button
+                          size="icon"
                           variant="ghost"
                           onClick={() => { setEditing(c); setShowForm(true); }}
-                          className="text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 p-2"
+                          className="text-slate-500 hover:text-indigo-600 hover:bg-indigo-50"
                         >
                           <IconEdit className="w-4 h-4" />
                         </Button>
+                        
                         <Button
+                          size="icon"
                           variant="ghost"
                           onClick={() => handleDelete(c.id)}
-                          className="text-slate-500 hover:text-red-600 hover:bg-red-50 p-2"
+                          className="text-slate-500 hover:text-red-600 hover:bg-red-50"
                         >
                           <IconTrash className="w-4 h-4" />
                         </Button>
@@ -227,71 +234,84 @@ export function CustomersPage() {
             </table>
           </div>
 
-          {/* Mobile List View */}
-          <div className="sm:hidden divide-y divide-slate-100">
-            {loading && <div className="p-4"><TableSkeleton /></div>}
+          {/* ---- MOBILE VIEW (RE-DESIGNED) ---- */}
+          <div className="sm:hidden grid grid-cols-1 gap-4">
+            {loading && <div className="p-4 bg-white rounded-xl"><TableSkeleton /></div>}
 
             {!loading && filtered.length === 0 && (
-              <div className="py-12 flex flex-col items-center justify-center text-slate-400 px-4 text-center">
-                <IconEmpty className="w-12 h-12 mb-2 opacity-50" />
-                <p className="text-slate-600 font-medium">Data tidak ditemukan</p>
+              <div className="py-16 flex flex-col items-center justify-center text-slate-400 px-4 text-center">
+                <IconEmpty className="w-16 h-16 mb-2 opacity-40" />
+                <p className="text-slate-600 font-medium">Belum ada data</p>
+                <p className="text-xs text-slate-400">Silakan tambah pelanggan baru</p>
               </div>
             )}
 
             {!loading && filtered.map((c) => (
-              <div key={c.id} className="p-4 bg-white active:bg-slate-50 transition-colors">
-                <div className="flex items-start gap-3">
+              <div key={c.id} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-3">
+                
+                {/* Mobile Header: Avatar & Nama */}
+                <div className="flex items-center gap-3">
                   <Avatar name={c.nama} />
                   <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-start">
-                      <h3 className="font-semibold text-slate-900 truncate pr-2">{c.nama}</h3>
-                    </div>
-                    <p className="text-sm text-slate-500 truncate mt-0.5">{c.alamat || 'Alamat kosong'}</p>
-
-                    {/* Info Bar Mobile */}
-                    <div className="flex items-center gap-3 mt-3">
-                      {c.telpon ? (
-                        <span className="text-xs font-mono text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
+                    <h3 className="font-bold text-slate-900 text-base truncate">{c.nama}</h3>
+                    {c.telpon ? (
+                      <div className="flex items-center mt-1">
+                        <span className="bg-slate-100 text-slate-600 font-mono text-xs px-2 py-0.5 rounded-md border border-slate-200">
                           {c.telpon}
                         </span>
-                      ) : (
-                        <span className="text-xs text-slate-400 italic">No HP kosong</span>
-                      )}
-                    </div>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-slate-400 italic block mt-1">Tanpa No. HP</span>
+                    )}
                   </div>
                 </div>
 
-                {/* Action Bar Mobile */}
-                <div className="mt-4 pt-3 border-t border-slate-50 flex items-center justify-between gap-3">
+                {/* Mobile Body: Alamat */}
+                <div className="bg-slate-50 rounded-xl p-3 border border-slate-100/50">
+                  <div className="flex items-start gap-2 text-slate-500">
+                    <IconMapPin className="w-4 h-4 mt-0.5 shrink-0 text-slate-400" />
+                    <p className="text-sm leading-relaxed text-slate-600">
+                      {c.alamat || <span className="italic text-slate-400">Alamat belum diisi</span>}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Mobile Footer: Actions Grid (3 Kolom Sejajar) */}
+                <div className="grid grid-cols-3 gap-2 mt-1">
+                  
+                  {/* WhatsApp Button (Logo Saja, Custom Color) */}
                   <Button
                     onClick={() => openWhatsApp(c.telpon, makeDefaultWaMsg(c.nama))}
                     disabled={!c.telpon}
-                    className="flex-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white text-sm py-2 rounded-lg disabled:opacity-50 disabled:bg-slate-300 shadow-sm"
+                    variant="ghost"
+                    className="col-span-1 w-full bg-green-50 text-green-600 border border-green-200 hover:bg-green-100 h-12"
                   >
-                    <IconWhatsApp className="w-4 h-4" />
-                    Chat WA
+                    <IconWhatsApp className="w-6 h-6" />
                   </Button>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      onClick={() => { setEditing(c); setShowForm(true); }}
-                      className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg border border-slate-200"
-                    >
-                      <IconEdit className="w-5 h-5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleDelete(c.id)}
-                      className="p-2 text-red-500 hover:bg-red-50 rounded-lg border border-slate-200"
-                    >
-                      <IconTrash className="w-5 h-5" />
-                    </Button>
-                  </div>
+
+                  {/* Edit Button (Outline) */}
+                  <Button
+                    variant="outline"
+                    onClick={() => { setEditing(c); setShowForm(true); }}
+                    className="col-span-1 w-full text-slate-600 hover:text-indigo-600 h-12"
+                  >
+                    <IconEdit className="w-5 h-5" />
+                  </Button>
+
+                  {/* Delete Button (Outline, Red hover) */}
+                  <Button
+                    variant="outline"
+                    onClick={() => handleDelete(c.id)}
+                    className="col-span-1 w-full text-slate-600 hover:text-red-600 hover:bg-red-50 hover:border-red-100 h-12"
+                  >
+                    <IconTrash className="w-5 h-5" />
+                  </Button>
                 </div>
               </div>
             ))}
           </div>
-        </Card>
+
+        </div>
       </div>
 
       {showForm && (
