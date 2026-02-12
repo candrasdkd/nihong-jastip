@@ -201,7 +201,7 @@ export function LedgerPage() {
                             </Button>
                             <Button onClick={() => setShowForm({ open: true, editing: null })} className="hidden sm:flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-900/20">
                                 <Icons.Plus className="w-4 h-4" />
-                                <span>Baru</span>
+                                <span>Tambah Baru</span>
                             </Button>
                         </div>
                     </div>

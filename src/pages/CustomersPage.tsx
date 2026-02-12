@@ -119,7 +119,7 @@ export function CustomersPage() {
           {/* Main Button: Menggunakan variant="primary" default (Orange) atau override class jika ingin tetap Indigo */}
           <Button
             onClick={() => { setEditing(null); setShowForm(true); }}
-            className="hidden sm:flex bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200"
+            className="hidden sm:flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-900/20"
           >
             <IconUserPlus className="w-5 h-5" />
             <span>Tambah Baru</span>
