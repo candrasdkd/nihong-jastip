@@ -110,3 +110,22 @@ export function getMonthKey(dateStr?: string) {
   const m = norm.match(/^(\d{4})-(\d{2})/);
   return m ? `${m[1]}-${m[2]}` : null;
 }
+
+export function toWaNumber(raw?: string) {
+  if (!raw) return '';
+  const digits = (raw.match(/\d+/g) || []).join('');
+  if (!digits) return '';
+  if (digits.startsWith('62')) return digits;
+  if (digits.startsWith('0')) return '62' + digits.slice(1);
+  if (digits.startsWith('8')) return '62' + digits;
+  return digits;
+}
+export function openWhatsApp(rawNumber?: string, message?: string) {
+  const wa = toWaNumber(rawNumber);
+  if (!wa) {
+    alert('Nomor telepon tidak valid atau kosong.');
+    return;
+  }
+  const url = `https://wa.me/${wa}${message ? `?text=${encodeURIComponent(message)}` : ''}`;
+  window.open(url, '_blank', 'noopener,noreferrer');
+}

@@ -4,8 +4,15 @@ export interface Order {
   namaPelanggan: string; jumlahKg: number; totalHarga?: number; status?: OrderStatus;
   tipeNominal?: string;
 }
-export interface Customer { id: string; nama: string; alamat: string; telpon: string; }
 
+export type Customer = {
+  id?: string;
+  nama: string;
+  alamat?: string;
+  telpon?: string;
+  createdAt?: any;
+  updatedAt?: any;
+};
 export type SubscribeOpts = {
   q?: string;                 // (belum diimplementasi server-side; gunakan client-side jika perlu)
   status?: string;
@@ -77,3 +84,5 @@ export type ShareConfig = {
   pic: string;
   status: "all" | "pending" | "done";
 };
+
+export type Option = { label: string; value: string };

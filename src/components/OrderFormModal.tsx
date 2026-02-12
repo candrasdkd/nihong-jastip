@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Customer, Order, OrderStatus } from '../types';
+import { Customer, Option, Order, OrderStatus } from '../types';
 import { computeTotal, todayStr } from '../utils/helpers';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
@@ -8,14 +8,8 @@ import { formatCurrency } from '../utils/format';
 import SearchableSelect from './ui/SearchableSelect';
 import { Select } from './ui/Select';
 import { RupiahInput } from './ui/RupiahInput';
-import { CATEGORY_OPTIONS } from '../utils/constants';
+import { CATEGORY_OPTIONS, ORDER_STATUSES } from '../utils/constants';
 
-const ALL_STATUSES = [
-  'Belum Membayar', 'Pembayaran Selesai', 'Sedang Pengiriman', 'Sudah Diterima',
-  'Pending', 'Diproses', 'Selesai', 'Dibatalkan'
-] as const;
-
-type Option = { label: string; value: string };
 
 const toStr = (v: number) => (Number.isFinite(v) ? String(v) : '');
 const num = (v: any) => {
@@ -164,7 +158,7 @@ export function OrderFormModal({
               <div className="lg:col-span-1">
                 <label className="block mb-1 text-sm text-neutral-600">Status</label>
                 <Select value={status} onChange={(e) => setStatus(e.target.value)}>
-                  {ALL_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                  {ORDER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                 </Select>
               </div>
             </div>

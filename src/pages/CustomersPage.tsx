@@ -17,16 +17,8 @@ import {
   DocumentData,
 } from 'firebase/firestore';
 import { BG } from '../utils/constants';
-
-// ---- Tipe lokal ----
-export type Customer = {
-  id?: string;
-  nama: string;
-  alamat?: string;
-  telpon?: string;
-  createdAt?: any;
-  updatedAt?: any;
-};
+import { Customer } from '../types';
+import { openWhatsApp } from '../utils/helpers';
 
 // ---- Konstanta ----
 const COL = 'customer';
@@ -38,26 +30,6 @@ const IconTrash = (props: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://
 const IconSearch = (props: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>);
 const IconWhatsApp = (props: React.SVGProps<SVGSVGElement>) => (<svg viewBox="0 0 24 24" fill="currentColor" {...props}><path d="M20.52 3.48A11.94 11.94 0 0 0 12.06 0C5.47.03.15 5.36.18 11.95a11.87 11.87 0 0 0 1.7 6.17L0 24l5.99-1.85a11.93 11.93 0 0 0 6.07 1.66h.01c6.59-.04 11.91-5.37 11.93-11.96a11.9 11.9 0 0 0-3.48-8.37Zm-8.46 18.3a9.9 9.9 0 0 1-5.05-1.39l-.36-.21-3.56 1.1 1.12-3.47-.23-.36a9.9 9.9 0 1 1 8.08 4.33ZM17.2 14.3c-.3-.16-1.78-.88-2.05-.98-.27-.1-.47-.16-.66.16-.2.32-.77.98-.95 1.18-.18.2-.35.23-.65.08-.3-.16-1.27-.47-2.43-1.5-.9-.8-1.5-1.8-1.67-2.1-.17-.32-.02-.49.13-.64.13-.12.3-.32.45-.48.15-.16.2-.27.3-.45.1-.18.05-.34-.02-.48-.08-.16-.66-1.6-.9-2.2-.24-.58-.48-.5-.66-.51h-.56c-.18 0-.48.07-.73.34-.25.27-.96.94-.96 2.3 0 1.36.99 2.67 1.12 2.85.14.18 1.96 2.98 4.75 4.18.66.28 1.18.45 1.58.58.66.21 1.27.18 1.75.11.53-.08 1.78-.73 2.04-1.44.25-.7.25-1.3.18-1.44-.08-.13-.27-.2-.57-.36Z" /></svg>);
 const IconEmpty = (props: React.SVGProps<SVGSVGElement>) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="text-slate-300" {...props}><circle cx="12" cy="12" r="10" /><path d="M16 16s-1.5-2-4-2-4 2-4 2" /><line x1="9" y1="9" x2="9.01" y2="9" /><line x1="15" y1="9" x2="15.01" y2="9" /></svg>);
-
-// ---- Helper WA ----
-function toWaNumber(raw?: string) {
-  if (!raw) return '';
-  const digits = (raw.match(/\d+/g) || []).join('');
-  if (!digits) return '';
-  if (digits.startsWith('62')) return digits;
-  if (digits.startsWith('0')) return '62' + digits.slice(1);
-  if (digits.startsWith('8')) return '62' + digits;
-  return digits;
-}
-function openWhatsApp(rawNumber?: string, message?: string) {
-  const wa = toWaNumber(rawNumber);
-  if (!wa) {
-    alert('Nomor telepon tidak valid atau kosong.');
-    return;
-  }
-  const url = `https://wa.me/${wa}${message ? `?text=${encodeURIComponent(message)}` : ''}`;
-  window.open(url, '_blank', 'noopener,noreferrer');
-}
 
 // ---- Komponen UI Kecil ----
 const Avatar = ({ name }: { name: string }) => {

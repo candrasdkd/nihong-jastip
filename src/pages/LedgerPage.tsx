@@ -169,7 +169,7 @@ export function LedgerPage() {
     const filterCount = [typeFilter, categoryFilter, dateFrom !== defaultFrom, dateTo !== defaultTo].filter(Boolean).length;
 
     return (
-        <div className="min-h-screen pb-24 sm:pb-10" style={{ backgroundColor: BG }}>
+        <div className="min-h-screen bg-slate-50/50 pb-20 font-sans text-slate-900">
             {/* Header Section */}
             <div className="bg-white border-b border-slate-200 sticky top-0 z-30">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
