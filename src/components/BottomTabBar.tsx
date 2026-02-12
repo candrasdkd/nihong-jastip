@@ -1,4 +1,4 @@
-type TabId = 'dashboard' | 'orders' | 'customers' | 'purchase' | 'cash' | 'generator';
+import { TabId } from "../types";
 
 export function BottomTabBar({
     current,
@@ -36,7 +36,7 @@ export function BottomTabBar({
         >
             <nav className="max-w-7xl mx-auto px-3 py-2">
                 <div className="grid grid-cols-5 gap-1">
-                    <Item id="dashboard" label="Dashboard" Icon={IconHome} />
+                    <Item id="home" label="Home" Icon={IconHome} />
                     <Item id="orders" label="Pesanan" Icon={IconClipboard} />
                     <Item id="customers" label="Konsumen" Icon={IconUsers} />
                     <Item id="purchase" label="Pembelian" Icon={IconCalculator} />
