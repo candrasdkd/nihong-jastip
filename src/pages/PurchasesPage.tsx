@@ -42,11 +42,11 @@ export default function PurchasesPage() {
   const [filter, setFilter] = useState<"all" | "done" | "pending">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
-  
+
   // Modal State
   const [isOpen, setIsOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
-  
+
   const [editing, setEditing] = useState<PurchaseItem | null>(null);
   const [activeTab, setActiveTab] = useState<"input" | "draft">("input");
 
@@ -190,18 +190,18 @@ export default function PurchasesPage() {
   // --- SHARE LOGIC ---
   const uniqueDates = useMemo(() => [...new Set(items.map(i => i.shippingDate))].sort(), [items]);
   const uniquePics = useMemo(() => {
-      if(!shareConfig.date) return PIC_OPTIONS;
-      return [...new Set(items.filter(i => i.shippingDate === shareConfig.date).map(i => i.pic))];
+    if (!shareConfig.date) return PIC_OPTIONS;
+    return [...new Set(items.filter(i => i.shippingDate === shareConfig.date).map(i => i.pic))];
   }, [items, shareConfig.date]);
 
   const generateShareText = () => {
     const filteredForShare = items.filter(i => {
       const matchDate = shareConfig.date ? i.shippingDate === shareConfig.date : true;
       const matchPic = shareConfig.pic ? i.pic === shareConfig.pic : true;
-      const matchStatus = 
+      const matchStatus =
         shareConfig.status === "all" ? true :
-        shareConfig.status === "done" ? i.isDone :
-        !i.isDone;
+          shareConfig.status === "done" ? i.isDone :
+            !i.isDone;
       return matchDate && matchPic && matchStatus;
     });
 
@@ -211,7 +211,7 @@ export default function PurchasesPage() {
     const groupedByCustomer: Record<string, PurchaseItem[]> = {};
     filteredForShare.forEach(i => {
       const custName = i.customer.trim().toUpperCase();
-      if(!groupedByCustomer[custName]) groupedByCustomer[custName] = [];
+      if (!groupedByCustomer[custName]) groupedByCustomer[custName] = [];
       groupedByCustomer[custName].push(i);
     });
 
@@ -220,21 +220,21 @@ export default function PurchasesPage() {
 
     // 3. Build Text
     let text = `📦 *LAPORAN JASTIP*\n`;
-    if(shareConfig.date) text += `🗓 Tanggal: ${formatAndAddYear(shareConfig.date)}\n`;
-    if(shareConfig.pic) text += `👤 PIC: ${shareConfig.pic}\n`;
+    if (shareConfig.date) text += `🗓 Tanggal: ${formatAndAddYear(shareConfig.date)}\n`;
+    if (shareConfig.pic) text += `👤 PIC: ${shareConfig.pic}\n`;
     text += `📊 Status: ${shareConfig.status === 'all' ? 'SEMUA' : shareConfig.status === 'done' ? 'SELESAI' : 'PENDING'}\n`;
     text += `---------------------------\n`;
 
     sortedCustomers.forEach(customer => {
       text += `\n👤 *${customer}*\n`;
-      
+
       // Sort Items per Customer (A-Z)
       const customerItems = groupedByCustomer[customer].sort((a, b) => a.name.localeCompare(b.name));
 
       customerItems.forEach(item => {
         const check = item.isDone ? "✅" : "⭕️";
         text += `${check} ${item.name} (${item.quantity})`;
-        if(item.note) text += `\n   └ _Note: ${item.note}_`;
+        if (item.note) text += `\n   └ _Note: ${item.note}_`;
         text += `\n`;
       });
     });
@@ -253,14 +253,7 @@ export default function PurchasesPage() {
   };
 
   return (
-    <div
-      className="relative min-h-screen p-4 sm:p-6 lg:p-8"
-      style={{
-        backgroundColor: BG,
-        backgroundImage: 'radial-gradient(rgba(0,0,0,0.03) 1px, transparent 1px)',
-        backgroundSize: '4px 4px',
-      }}
-    >
+    <div className="min-h-screen bg-slate-50/50 pb-20 font-sans text-slate-900 px-4">
       {/* --- LOADING OVERLAY --- */}
       <AnimatePresence>
         {isProcessing && (
@@ -307,7 +300,7 @@ export default function PurchasesPage() {
           </div>
           <div className="flex items-center gap-2 border-t sm:border-t-0 sm:border-l border-slate-200 pl-0 sm:pl-2 pt-2 sm:pt-0 overflow-x-auto no-scrollbar">
             {/* BUTTON SHARE WHATSAPP */}
-            <button 
+            <button
               onClick={() => {
                 const defaultDate = uniqueDates.length > 0 ? uniqueDates[uniqueDates.length - 1] : "";
                 setShareConfig({ date: defaultDate, pic: "", status: "all" });
@@ -319,7 +312,7 @@ export default function PurchasesPage() {
               <Share2 size={18} />
               <span className="text-xs font-bold hidden sm:inline">SHARE</span>
             </button>
-            
+
             <div className="w-px h-6 bg-slate-200 mx-1"></div>
 
             <button onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")} className="p-2.5 hover:bg-slate-100 rounded-xl text-slate-500 transition-colors">
@@ -391,7 +384,7 @@ export default function PurchasesPage() {
                     {Object.entries(data.pics).map(([pic, customerMap]) => (
                       <div key={pic} className="relative">
                         {/* PIC Badge */}
-                        <div className="absolute -left-[45px] top-0 flex items-center justify-center">
+                        <div className="absolute -left-[30px] top-2.5 flex items-center justify-center">
                           <div className="w-2.5 h-2.5 bg-slate-400 rounded-full ring-4 ring-[#f8f9fa]" />
                         </div>
 
@@ -511,7 +504,7 @@ export default function PurchasesPage() {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.9 }}
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-20 right-5 sm:bottom-8 sm:right-5 w-12 h-12 sm:w-16 sm:h-16 bg-orange-600 text-white rounded-2xl shadow-2xl flex items-center justify-center z-40 border-4 border-white/20 active:bg-orange-700 shadow-orange-900/20"
+        className="sm:hidden fixed bottom-20 right-6 h-14 w-14 bg-slate-900 text-white rounded-full shadow-xl shadow-slate-900/30 flex items-center justify-center active:scale-95 transition-transform z-40"
       >
         <Plus size={28} strokeWidth={3} />
       </motion.button>
@@ -729,8 +722,8 @@ export default function PurchasesPage() {
       {/* --- MODAL SHARE WHATSAPP --- */}
       <AnimatePresence>
         {isShareOpen && (
-           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-             <motion.div
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setIsShareOpen(false)}
               className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
@@ -740,75 +733,75 @@ export default function PurchasesPage() {
               className="bg-white w-full max-w-lg rounded-2xl shadow-2xl relative flex flex-col overflow-hidden max-h-[90vh]"
             >
               <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                 <h3 className="font-bold text-slate-700 flex items-center gap-2"><Share2 size={18} className="text-green-600"/> Bagikan Laporan</h3>
-                 <button onClick={() => setIsShareOpen(false)} className="p-2 hover:bg-slate-200 rounded-full text-slate-400 transition-colors"><X size={18} /></button>
+                <h3 className="font-bold text-slate-700 flex items-center gap-2"><Share2 size={18} className="text-green-600" /> Bagikan Laporan</h3>
+                <button onClick={() => setIsShareOpen(false)} className="p-2 hover:bg-slate-200 rounded-full text-slate-400 transition-colors"><X size={18} /></button>
               </div>
 
               <div className="p-5 space-y-4 overflow-y-auto">
                 {/* Config Controls */}
                 <div className="grid grid-cols-2 gap-3">
-                   <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Tanggal</label>
-                      <select 
-                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold outline-none focus:border-green-500"
-                        value={shareConfig.date}
-                        onChange={e => setShareConfig({...shareConfig, date: e.target.value})}
-                      >
-                        <option value="">Semua Tanggal</option>
-                        {uniqueDates.map(d => <option key={d} value={d}>{formatAndAddYear(d)}</option>)}
-                      </select>
-                   </div>
-                   <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">PIC</label>
-                      <select 
-                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold outline-none focus:border-green-500"
-                        value={shareConfig.pic}
-                        onChange={e => setShareConfig({...shareConfig, pic: e.target.value})}
-                      >
-                         <option value="">Semua PIC</option>
-                         {uniquePics.map(p => <option key={p} value={p}>{p}</option>)}
-                      </select>
-                   </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase">Tanggal</label>
+                    <select
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold outline-none focus:border-green-500"
+                      value={shareConfig.date}
+                      onChange={e => setShareConfig({ ...shareConfig, date: e.target.value })}
+                    >
+                      <option value="">Semua Tanggal</option>
+                      {uniqueDates.map(d => <option key={d} value={d}>{formatAndAddYear(d)}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase">PIC</label>
+                    <select
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold outline-none focus:border-green-500"
+                      value={shareConfig.pic}
+                      onChange={e => setShareConfig({ ...shareConfig, pic: e.target.value })}
+                    >
+                      <option value="">Semua PIC</option>
+                      {uniquePics.map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                  </div>
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-500 uppercase">Status Barang</label>
                   <div className="flex bg-slate-100 p-1 rounded-lg">
-                      {(['all', 'pending', 'done'] as const).map(s => (
-                        <button
-                          key={s}
-                          onClick={() => setShareConfig({...shareConfig, status: s})}
-                          className={`flex-1 py-1.5 text-xs font-bold uppercase rounded-md transition-all ${shareConfig.status === s ? 'bg-white text-green-600 shadow-sm' : 'text-slate-400'}`}
-                        >
-                          {s === 'all' ? 'Semua' : s === 'done' ? 'Selesai' : 'Pending'}
-                        </button>
-                      ))}
+                    {(['all', 'pending', 'done'] as const).map(s => (
+                      <button
+                        key={s}
+                        onClick={() => setShareConfig({ ...shareConfig, status: s })}
+                        className={`flex-1 py-1.5 text-xs font-bold uppercase rounded-md transition-all ${shareConfig.status === s ? 'bg-white text-green-600 shadow-sm' : 'text-slate-400'}`}
+                      >
+                        {s === 'all' ? 'Semua' : s === 'done' ? 'Selesai' : 'Pending'}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
                 {/* Preview Box */}
                 <div className="space-y-2">
-                   <label className="text-[10px] font-bold text-slate-500 uppercase flex justify-between">
-                     <span>Preview Pesan</span>
-                     <span className="text-[10px] bg-green-100 text-green-700 px-2 rounded">WhatsApp Format</span>
-                   </label>
-                   <div className="bg-slate-900 text-slate-200 p-4 rounded-xl text-xs font-mono whitespace-pre-wrap max-h-60 overflow-y-auto border border-slate-700 shadow-inner">
-                      {generateShareText()}
-                   </div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase flex justify-between">
+                    <span>Preview Pesan</span>
+                    <span className="text-[10px] bg-green-100 text-green-700 px-2 rounded">WhatsApp Format</span>
+                  </label>
+                  <div className="bg-slate-900 text-slate-200 p-4 rounded-xl text-xs font-mono whitespace-pre-wrap max-h-60 overflow-y-auto border border-slate-700 shadow-inner">
+                    {generateShareText()}
+                  </div>
                 </div>
               </div>
 
               <div className="p-4 border-t border-slate-100 bg-slate-50/50">
-                 <button 
+                <button
                   onClick={handleSendWhatsapp}
                   className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-green-200"
-                 >
-                    <Send size={18} />
-                    KIRIM KE WHATSAPP
-                 </button>
+                >
+                  <Send size={18} />
+                  KIRIM KE WHATSAPP
+                </button>
               </div>
             </motion.div>
-           </div>
+          </div>
         )}
       </AnimatePresence>
     </div>

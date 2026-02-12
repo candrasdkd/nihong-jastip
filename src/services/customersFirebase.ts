@@ -12,29 +12,20 @@ import {
     DocumentData,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase'; // pastikan sudah ada inisialisasi firebase
-
-// Struktur data customer di Firestore
-export type CustomerDoc = {
-    id?: string;
-    nama: string;
-    alamat?: string;
-    telpon?: string;
-    createdAt?: any;
-    updatedAt?: any;
-};
+import { Customer } from '../types';
 
 const COL = 'customer'; // sesuai permintaan: nama db/collection = "customer"
 
 // Live listener (real-time)
 export function listenCustomers(
-    cb: (rows: CustomerDoc[]) => void
+    cb: (rows: Customer[]) => void
 ) {
     const q = query(collection(db, COL), orderBy('nama'));
     const unsub = onSnapshot(q, (snap) => {
         const rows = snap.docs.map((d) => ({
             id: d.id,
             ...(d.data() as DocumentData),
-        })) as CustomerDoc[];
+        })) as Customer[];
         cb(rows);
     });
 
@@ -42,19 +33,19 @@ export function listenCustomers(
 }
 
 // CREATE
-export async function addCustomer(data: Omit<CustomerDoc, 'id' | 'createdAt' | 'updatedAt'>) {
+export async function addCustomer(data: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>) {
     const ref = await addDoc(collection(db, COL), {
         ...data,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
     });
-    return { id: ref.id, ...data } as CustomerDoc;
+    return { id: ref.id, ...data } as Customer;
 }
 
 // UPDATE
 export async function updateCustomer(
     id: string,
-    data: Partial<Omit<CustomerDoc, 'id' | 'createdAt'>>
+    data: Partial<Omit<Customer, 'id' | 'createdAt'>>
 ) {
     const ref = doc(db, COL, id);
     await updateDoc(ref, { ...data, updatedAt: serverTimestamp() });

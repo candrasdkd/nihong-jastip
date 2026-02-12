@@ -107,16 +107,9 @@ export function CustomersPage() {
   const makeDefaultWaMsg = (nama?: string) => `Halo ${nama || ''}, saya ingin konfirmasi pesanan.`;
 
   return (
-    <div
-      className="relative min-h-screen p-4 sm:p-6 lg:p-8"
-      style={{
-        backgroundColor: BG,
-        backgroundImage: 'radial-gradient(rgba(0,0,0,0.03) 1px, transparent 1px)',
-        backgroundSize: '4px 4px',
-      }}
-    >
-      <div className="max-w-6xl mx-auto space-y-6">
-        
+    <div className="min-h-screen bg-slate-50/50 pb-20 font-sans text-slate-900">
+      <div className="max-w-6xl mx-auto space-y-6 px-4">
+
         {/* Header & Stats */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
@@ -152,7 +145,7 @@ export function CustomersPage() {
 
         {/* Content Area */}
         <Card className="bg-white shadow-lg shadow-slate-200/50 border border-slate-100 overflow-hidden">
-          
+
           {/* Desktop Table */}
           <div className="hidden sm:block overflow-x-auto">
             <table className="min-w-full text-sm">
@@ -168,7 +161,7 @@ export function CustomersPage() {
                 {loading && (
                   <tr><td colSpan={4} className="p-6"><TableSkeleton /></td></tr>
                 )}
-                
+
                 {!loading && filtered.length === 0 && (
                   <tr>
                     <td colSpan={4} className="px-6 py-12 text-center">
@@ -203,7 +196,7 @@ export function CustomersPage() {
                     </td>
                     <td className="px-6 py-3 text-right">
                       <div className="flex items-center justify-end gap-2 opacity-80 group-hover:opacity-100">
-                        <Button 
+                        <Button
                           onClick={() => openWhatsApp(c.telpon, makeDefaultWaMsg(c.nama))}
                           disabled={!c.telpon}
                           className="bg-green-50 text-green-600 hover:bg-green-100 hover:text-green-700 p-2 rounded-lg border border-green-100 disabled:opacity-30"
@@ -212,15 +205,15 @@ export function CustomersPage() {
                           <IconWhatsApp className="w-4 h-4" />
                         </Button>
                         <div className="h-4 w-px bg-slate-200 mx-1"></div>
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
                           onClick={() => { setEditing(c); setShowForm(true); }}
                           className="text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 p-2"
                         >
                           <IconEdit className="w-4 h-4" />
                         </Button>
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
                           onClick={() => handleDelete(c.id)}
                           className="text-slate-500 hover:text-red-600 hover:bg-red-50 p-2"
                         >
@@ -236,67 +229,67 @@ export function CustomersPage() {
 
           {/* Mobile List View */}
           <div className="sm:hidden divide-y divide-slate-100">
-             {loading && <div className="p-4"><TableSkeleton /></div>}
-             
-             {!loading && filtered.length === 0 && (
-                <div className="py-12 flex flex-col items-center justify-center text-slate-400 px-4 text-center">
-                   <IconEmpty className="w-12 h-12 mb-2 opacity-50" />
-                   <p className="text-slate-600 font-medium">Data tidak ditemukan</p>
-                </div>
-             )}
+            {loading && <div className="p-4"><TableSkeleton /></div>}
 
-             {!loading && filtered.map((c) => (
-               <div key={c.id} className="p-4 bg-white active:bg-slate-50 transition-colors">
-                 <div className="flex items-start gap-3">
-                   <Avatar name={c.nama} />
-                   <div className="flex-1 min-w-0">
-                     <div className="flex justify-between items-start">
-                       <h3 className="font-semibold text-slate-900 truncate pr-2">{c.nama}</h3>
-                     </div>
-                     <p className="text-sm text-slate-500 truncate mt-0.5">{c.alamat || 'Alamat kosong'}</p>
-                     
-                     {/* Info Bar Mobile */}
-                     <div className="flex items-center gap-3 mt-3">
-                       {c.telpon ? (
-                         <span className="text-xs font-mono text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
-                           {c.telpon}
-                         </span>
-                       ) : (
-                         <span className="text-xs text-slate-400 italic">No HP kosong</span>
-                       )}
-                     </div>
-                   </div>
-                 </div>
+            {!loading && filtered.length === 0 && (
+              <div className="py-12 flex flex-col items-center justify-center text-slate-400 px-4 text-center">
+                <IconEmpty className="w-12 h-12 mb-2 opacity-50" />
+                <p className="text-slate-600 font-medium">Data tidak ditemukan</p>
+              </div>
+            )}
 
-                 {/* Action Bar Mobile */}
-                 <div className="mt-4 pt-3 border-t border-slate-50 flex items-center justify-between gap-3">
-                    <Button 
-                      onClick={() => openWhatsApp(c.telpon, makeDefaultWaMsg(c.nama))}
-                      disabled={!c.telpon}
-                      className="flex-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white text-sm py-2 rounded-lg disabled:opacity-50 disabled:bg-slate-300 shadow-sm"
-                    >
-                      <IconWhatsApp className="w-4 h-4" />
-                      Chat WA
-                    </Button>
-                    <div className="flex gap-1">
-                      <Button 
-                        variant="ghost" 
-                        onClick={() => { setEditing(c); setShowForm(true); }}
-                        className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg border border-slate-200"
-                      >
-                        <IconEdit className="w-5 h-5" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        onClick={() => handleDelete(c.id)}
-                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg border border-slate-200"
-                      >
-                        <IconTrash className="w-5 h-5" />
-                      </Button>
+            {!loading && filtered.map((c) => (
+              <div key={c.id} className="p-4 bg-white active:bg-slate-50 transition-colors">
+                <div className="flex items-start gap-3">
+                  <Avatar name={c.nama} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-start">
+                      <h3 className="font-semibold text-slate-900 truncate pr-2">{c.nama}</h3>
                     </div>
-                 </div>
-               </div>
-             ))}
+                    <p className="text-sm text-slate-500 truncate mt-0.5">{c.alamat || 'Alamat kosong'}</p>
+
+                    {/* Info Bar Mobile */}
+                    <div className="flex items-center gap-3 mt-3">
+                      {c.telpon ? (
+                        <span className="text-xs font-mono text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
+                          {c.telpon}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-400 italic">No HP kosong</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Bar Mobile */}
+                <div className="mt-4 pt-3 border-t border-slate-50 flex items-center justify-between gap-3">
+                  <Button
+                    onClick={() => openWhatsApp(c.telpon, makeDefaultWaMsg(c.nama))}
+                    disabled={!c.telpon}
+                    className="flex-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white text-sm py-2 rounded-lg disabled:opacity-50 disabled:bg-slate-300 shadow-sm"
+                  >
+                    <IconWhatsApp className="w-4 h-4" />
+                    Chat WA
+                  </Button>
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      onClick={() => { setEditing(c); setShowForm(true); }}
+                      className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg border border-slate-200"
+                    >
+                      <IconEdit className="w-5 h-5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleDelete(c.id)}
+                      className="p-2 text-red-500 hover:bg-red-50 rounded-lg border border-slate-200"
+                    >
+                      <IconTrash className="w-5 h-5" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </Card>
       </div>
@@ -321,13 +314,13 @@ export function CustomersPage() {
       )}
 
       {/* Floating Action Button (Mobile Only) */}
-      <Button
+      <button
         onClick={() => { setEditing(null); setShowForm(true); }}
         className="sm:hidden fixed bottom-20 right-6 h-14 w-14 bg-slate-900 text-white rounded-full shadow-xl shadow-slate-900/30 flex items-center justify-center active:scale-95 transition-transform z-40"
         aria-label="Tambah Pelanggan"
       >
         <IconUserPlus className="w-7 h-7" />
-      </Button>
+      </button>
     </div>
   );
 }

@@ -143,7 +143,6 @@ export function OrdersPage({ orders, setOrders, customers, unitPrice }: {
 
   return (
     <div className="min-h-screen bg-slate-50/50 pb-20 font-sans text-slate-900">
-      
       {/* 1. Header Section */}
       <div className="bg-white border-b border-slate-200 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -295,12 +294,12 @@ export function OrdersPage({ orders, setOrders, customers, unitPrice }: {
       )}
 
       {/* Mobile FAB */}
-      <Button
+      <button
         onClick={() => { setEditing(null); setShowForm(true); }}
-        className="sm:hidden fixed bottom-6 right-6 z-40 bg-slate-900 text-white rounded-full w-14 h-14 shadow-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
+        className="sm:hidden fixed bottom-20 right-6 h-14 w-14 bg-slate-900 text-white rounded-full shadow-xl shadow-slate-900/30 flex items-center justify-center active:scale-95 transition-transform z-40"
       >
         <IconPlus className="w-6 h-6" />
-      </Button>
+      </button>
     </div>
   );
 }

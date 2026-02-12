@@ -21,11 +21,10 @@ function GrowthBadge({ value }: { value: number }) {
   const positive = value >= 0;
   return (
     <span
-      className={`text-xs font-medium px-2 py-1 rounded-full ${
-        positive
+      className={`text-xs font-medium px-2 py-1 rounded-full ${positive
           ? 'bg-emerald-100 text-emerald-700'
           : 'bg-red-100 text-red-700'
-      }`}
+        }`}
     >
       {positive ? '▲' : '▼'} {Math.abs(value).toFixed(1)}%
     </span>
@@ -100,8 +99,8 @@ export function Dashboard({
   const bestMonth =
     monthlyData.length > 0
       ? monthlyData.reduce((max, m) =>
-          m.total > max.total ? m : max
-        )
+        m.total > max.total ? m : max
+      )
       : null;
 
   /* ========= GROWTH ========= */
@@ -115,16 +114,8 @@ export function Dashboard({
     : 0;
 
   return (
-    <div
-      className="relative min-h-screen px-4 sm:px-8 lg:px-16 py-10"
-      style={{
-        backgroundColor: BG,
-        backgroundImage:
-          'radial-gradient(rgba(0,0,0,0.03) 1px, transparent 1px)',
-        backgroundSize: '4px 4px',
-      }}
-    >
-      <div className="relative w-full max-w-[1600px] mx-auto space-y-10">
+    <div className="min-h-screen bg-slate-50/50 pb-20 font-sans text-slate-900">
+      <div className="relative w-full max-w-[1600px] mx-auto space-y-10 px-4">
 
         {/* Header + Filter */}
         <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6">
@@ -146,11 +137,10 @@ export function Dashboard({
               <button
                 key={p.value}
                 onClick={() => setPeriod(p.value as PeriodType)}
-                className={`px-4 py-1.5 rounded-full text-sm transition ${
-                  period === p.value
+                className={`px-4 py-1.5 rounded-full text-sm transition ${period === p.value
                     ? 'bg-red-600 text-white'
                     : 'bg-white border border-neutral-300 text-neutral-600'
-                }`}
+                  }`}
               >
                 {p.label}
               </button>
