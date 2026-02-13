@@ -53,3 +53,6 @@ export const DEFAULT_JPN_INDO: ScheduleItem[] = [
   { id: 10, date: '28 NOV', status: 'AVAILABLE', value: '50' },
   { id: 11, date: '02 DES', status: 'AVAILABLE', value: '5' },
 ];
+
+export const LONG_MONTHS_LABEL = ['JANUARI', 'FEBRUARI', 'MARET', 'APRIL', 'MEI', 'JUNI', 'JULI', 'AGUSTUS', 'SEPTEMBER', 'OKTOBER', 'NOVEMBER', 'DESEMBER'];
+export const MONTH_LABEL = ['JAN', 'FEB', 'MAR', 'APR', 'MEI', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
