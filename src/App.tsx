@@ -14,9 +14,10 @@ import PurchasesPage from './pages/PurchasesPage';
 import { TabButton } from './components/ui/TabButton';
 import { UnitPriceModal } from './components/UnitPriceModal';
 import { BottomTabBar } from './components/BottomTabBar';
+import { InstallPrompt } from './components/InstallPrompt';
 
 // Assets & Services
-import logoLight from './assets/nihong.png';
+import logoLight from './assets/logo-admin.png';
 import { Customer, Order, TabId } from './types';
 import { listenCustomers } from './services/customersFirebase';
 import { subscribeOrders, toExtended } from './services/ordersFirebase';
@@ -258,6 +259,7 @@ export default function App() {
 
       {/* NAVBAR MOBILE */}
       <BottomTabBar current={tab} setTab={setTab} />
+      <InstallPrompt />
     </div>
   );
 }

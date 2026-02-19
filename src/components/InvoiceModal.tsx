@@ -7,11 +7,11 @@ import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 
 // --- ASSETS ---
-import stampImage from '../assets/cap.png'; 
+import stampImage from '../assets/cap.png';
 import logoImage from '../assets/nihong.png';
 
 // --- ICONS ---
-const DownloadIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>);
+const DownloadIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>);
 
 // --- DATA ---
 const BANK_ACCOUNTS = [
@@ -28,7 +28,7 @@ function compute(o: ExtendedOrder, unitPrice: number) {
   const baseOngkir = Number(o.hargaOngkir ?? 0);
   const ongkirMarkup = Number(o.hargaOngkirMarkup ?? 0);
   const currency = o.tipeNominal || 'IDR';
-  
+
   const lineTotal = jastipMarkup + ongkirMarkup;
   const keuntungan = (jastipMarkup + ongkirMarkup) - (baseJastip + baseOngkir);
 
@@ -50,10 +50,10 @@ const getStatusBadge = (status: string) => {
 // Komponen ini dipisah agar bisa dirender dua kali (satu untuk preview, satu untuk PDF generator)
 const InvoicePaper = React.forwardRef(({ order, items, customer, totals, grandTotal, badge, unitPrice }: any, ref: any) => {
   return (
-    <div 
+    <div
       ref={ref}
       className="bg-white text-slate-900 relative shadow-sm"
-      style={{ 
+      style={{
         width: '210mm',          // Lebar Fix A4
         minHeight: '297mm',      // Tinggi Min A4
         padding: '15mm 20mm',    // Margin Kertas
@@ -73,7 +73,7 @@ const InvoicePaper = React.forwardRef(({ order, items, customer, totals, grandTo
         </div>
         <div className="text-right">
           <div className="mb-4 flex justify-end">
-             <img src={logoImage} alt="Logo" className="h-16 w-auto object-contain" />
+            <img src={logoImage} alt="Logo" className="h-16 w-auto object-contain" />
           </div>
           <div className="space-y-1 font-sans">
             <div className="flex justify-end gap-4 text-sm">
@@ -97,9 +97,9 @@ const InvoicePaper = React.forwardRef(({ order, items, customer, totals, grandTo
           {customer?.telpon && <div className="text-sm text-slate-600 mt-1">{customer.telpon}</div>}
         </div>
         <div className="w-1/2 flex flex-col items-end justify-center">
-           <div className={`border-4 px-6 py-2 rounded uppercase font-black text-2xl tracking-widest opacity-80 rotate-[-5deg] ${badge.color}`}>
-             {badge.text}
-           </div>
+          <div className={`border-4 px-6 py-2 rounded uppercase font-black text-2xl tracking-widest opacity-80 rotate-[-5deg] ${badge.color}`}>
+            {badge.text}
+          </div>
         </div>
       </div>
 
@@ -137,7 +137,7 @@ const InvoicePaper = React.forwardRef(({ order, items, customer, totals, grandTo
 
       {/* Footer Section */}
       <div className="flex flex-row justify-between items-start pt-6 border-t border-slate-300">
-        
+
         {/* Left: Payment Info */}
         <div className="w-[55%] pr-8">
           <h4 className="font-bold text-sm text-slate-900 mb-3 uppercase tracking-wide">Metode Pembayaran</h4>
@@ -166,7 +166,7 @@ const InvoicePaper = React.forwardRef(({ order, items, customer, totals, grandTo
               <span className="font-medium">Subtotal</span>
               <span className="font-mono">{formatCurrency(totals.subtotal, totals.currency)}</span>
             </div>
-            
+
             <div className="border-t-2 border-slate-900 my-2 pt-2 flex justify-between items-center">
               <span className="font-black text-xl text-slate-900">TOTAL</span>
               <span className="font-black text-2xl text-slate-900 font-mono">
@@ -176,10 +176,10 @@ const InvoicePaper = React.forwardRef(({ order, items, customer, totals, grandTo
           </div>
 
           <div className="mt-12 text-center relative">
-             <div className="absolute top-[-25px] left-1/2 transform -translate-x-1/2 opacity-70 pointer-events-none mix-blend-multiply">
-                 {stampImage && <img src={stampImage} alt="Stamp" className="w-28 h-28 object-contain rotate-12" />}
-              </div>
-            <div className="h-16"></div> 
+            <div className="absolute top-[-25px] left-1/2 transform -translate-x-1/2 opacity-70 pointer-events-none mix-blend-multiply">
+              {stampImage && <img src={stampImage} alt="Stamp" className="w-28 h-28 object-contain rotate-12" />}
+            </div>
+            <div className="h-16"></div>
             <div className="border-t border-slate-400 w-3/4 mx-auto pt-2">
               <p className="text-xs font-bold text-slate-900 uppercase tracking-widest">Nihong Jastip Admin</p>
             </div>
@@ -188,7 +188,7 @@ const InvoicePaper = React.forwardRef(({ order, items, customer, totals, grandTo
       </div>
 
       <div className="absolute bottom-6 left-0 w-full text-center">
-         <p className="text-[10px] text-slate-400 font-medium tracking-wider">TERIMA KASIH TELAH MENGGUNAKAN JASA KAMI</p>
+        <p className="text-[10px] text-slate-400 font-medium tracking-wider">TERIMA KASIH TELAH MENGGUNAKAN JASA KAMI</p>
       </div>
     </div>
   );
@@ -218,11 +218,11 @@ export function InvoiceModal({
   useEffect(() => {
     const handleResize = () => {
       const w = window.innerWidth;
-      if (w < 820) { 
+      if (w < 820) {
         // 794px adalah lebar A4. Kita scale agar muat di layar HP
         // Dikurangi padding container (misal 32px)
-        const scale = (w - 32) / 794; 
-        setPreviewScale(Math.max(scale, 0.35)); 
+        const scale = (w - 32) / 794;
+        setPreviewScale(Math.max(scale, 0.35));
       } else {
         setPreviewScale(1);
       }
@@ -312,14 +312,14 @@ export function InvoiceModal({
 
   return (
     <Modal onClose={onClose} title="Preview Invoice" size="full" contentClassName="p-0 bg-slate-100 flex flex-col h-full overflow-hidden">
-      
+
       {/* 1. AREA PREVIEW UNTUK DILIHAT USER (RESPONSIVE SCALED) */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden flex justify-center bg-slate-200/50 relative py-8">
-        <div 
-            className="origin-top shadow-xl transition-transform duration-200"
-            style={{ transform: `scale(${previewScale})` }} // Scale visual saja
+        <div
+          className="origin-top shadow-xl transition-transform duration-200"
+          style={{ transform: `scale(${previewScale})` }} // Scale visual saja
         >
-            <InvoicePaper {...paperProps} />
+          <InvoicePaper {...paperProps} />
         </div>
       </div>
 
@@ -328,7 +328,7 @@ export function InvoiceModal({
           html2canvas akan memotret ini, BUKAN yang dilihat user. */}
       <div style={{ position: 'fixed', top: 0, left: '-9999px', zIndex: -1 }}>
         <div ref={hiddenPrintRef}>
-            <InvoicePaper {...paperProps} />
+          <InvoicePaper {...paperProps} />
         </div>
       </div>
 
@@ -336,9 +336,9 @@ export function InvoiceModal({
       <div className="bg-white border-t border-slate-200 p-4 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] safe-area-bottom">
         <div className="max-w-2xl mx-auto flex gap-3">
           <Button variant="ghost" onClick={onClose} className="flex-1">Tutup</Button>
-          <Button 
-            onClick={downloadPDF} 
-            disabled={isGenerating} 
+          <Button
+            onClick={downloadPDF}
+            disabled={isGenerating}
             className="flex-[2] bg-slate-900 text-white hover:bg-slate-800 flex items-center justify-center gap-2 shadow-lg shadow-slate-900/20"
           >
             {isGenerating ? 'Memproses...' : <><DownloadIcon /> <span>Download PDF</span></>}
