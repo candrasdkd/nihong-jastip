@@ -6,13 +6,22 @@ export function InstallPrompt() {
     const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
     const [showPrompt, setShowPrompt] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
+    const [isIOS, setIsIOS] = useState(false);
+    const [isStandalone, setIsStandalone] = useState(false);
 
     useEffect(() => {
+        // Cek Standalone (udah diinstall)
+        if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone) {
+            setIsStandalone(true);
+            return; // Jangan lanjut script
+        }
+
         // Detect mobile
         const checkMobile = () => {
             const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
             const mobileRegex = /android|iphone|ipad|ipod|blackberry|iemobile|opera mini/i;
             setIsMobile(mobileRegex.test(userAgent.toLowerCase()));
+            setIsIOS(/ipad|iphone|ipod/i.test(userAgent.toLowerCase()));
         };
 
         checkMobile();
@@ -21,39 +30,44 @@ export function InstallPrompt() {
         const handleBeforeInstallPrompt = (e: Event) => {
             e.preventDefault();
             setDeferredPrompt(e);
-            // Show prompt if mobile or after some delay
-            setTimeout(() => setShowPrompt(true), 3000);
         };
 
         window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
-        // Check if already installed
-        if (window.matchMedia('(display-mode: standalone)').matches) {
-            setShowPrompt(false);
-        }
+        // Paksa Muncul jika dia mobile dan belum terinstall
+        // Tunggu 2 detik setelah buka web
+        const timer = setTimeout(() => {
+            setShowPrompt(true);
+        }, 2000);
 
         return () => {
             window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+            clearTimeout(timer);
         };
     }, []);
 
     const handleInstallClick = async () => {
-        if (!deferredPrompt) return;
-
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-
-        if (outcome === 'accepted') {
-            console.log('User accepted the install prompt');
+        if (deferredPrompt) {
+            // Native install prompt tersedia (Android/Chrome)
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                console.log('User accepted the install prompt');
+            }
+            setDeferredPrompt(null);
+            setShowPrompt(false);
         } else {
-            console.log('User dismissed the install prompt');
+            // Fallback instruction (iOS/Safari atau jika native prompt disembunyikan/cooling)
+            if (isIOS) {
+                alert('Untuk install: Tap icon Share (Bagikan) 📤 di bawah layar, lalu pilih "Add to Home Screen" (Tambahkan ke Layar Utama)');
+            } else {
+                alert('Untuk install: Tap menu titik 3 ⋮ di pojok kanan atas browser, lalu pilih "Add to Home screen" / "Install app"');
+            }
+            setShowPrompt(false);
         }
-
-        setDeferredPrompt(null);
-        setShowPrompt(false);
     };
 
-    if (!showPrompt) return null;
+    if (!showPrompt || isStandalone || !isMobile) return null;
 
     return (
         <AnimatePresence>
