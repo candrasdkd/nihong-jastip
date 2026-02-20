@@ -8,7 +8,8 @@ export default defineConfig({
         VitePWA({
             registerType: 'autoUpdate',
             devOptions: {
-                enabled: true
+                enabled: true,
+                type: 'module'
             },
             includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
             manifest: {
@@ -16,6 +17,9 @@ export default defineConfig({
                 short_name: 'NJ Admin',
                 description: 'Admin panel for Nihong Jastip',
                 theme_color: '#4c1d95',
+                background_color: '#ffffff',
+                display: 'standalone',
+                start_url: '/',
                 icons: [
                     {
                         src: 'pwa-192x192.png',
