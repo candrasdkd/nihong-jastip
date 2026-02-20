@@ -2,9 +2,9 @@ import {
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
-  User
-} from 'firebase/auth';
-import { auth } from '../lib/firebase';
+  User,
+} from "firebase/auth";
+import { auth } from "../lib/firebase";
 
 export function login(email: string, password: string) {
   return signInWithEmailAndPassword(auth, email, password);

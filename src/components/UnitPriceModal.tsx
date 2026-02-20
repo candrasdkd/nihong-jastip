@@ -1,11 +1,17 @@
-import React, { useState } from 'react';
-import { Input } from './ui/Input';
-import { Button } from './ui/Button';
-import { Modal } from './ui/Modal';
+import React, { useState } from "react";
+import { Input } from "./ui/Input";
+import { Button } from "./ui/Button";
+import { Modal } from "./ui/Modal";
 
 export function UnitPriceModal({
-  unitPrice, onClose, onSave,
-}: { unitPrice: number; onClose: () => void; onSave: (newPrice: number, recalc: boolean) => void; }) {
+  unitPrice,
+  onClose,
+  onSave,
+}: {
+  unitPrice: number;
+  onClose: () => void;
+  onSave: (newPrice: number, recalc: boolean) => void;
+}) {
   const [price, setPrice] = useState(unitPrice);
   const [recalc, setRecalc] = useState(true);
 
@@ -31,8 +37,8 @@ export function UnitPriceModal({
           className="focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
         />
         <p className="text-xs text-neutral-700">
-          Perhitungan total menggunakan <b>pembulatan ke atas (ceil)</b> ke kilogram penuh.
-          Contoh: 1,2 kg → 2 kg.
+          Perhitungan total menggunakan <b>pembulatan ke atas (ceil)</b> ke
+          kilogram penuh. Contoh: 1,2 kg → 2 kg.
         </p>
         <label className="flex items-center gap-2 text-sm">
           <input
@@ -44,10 +50,18 @@ export function UnitPriceModal({
           Terapkan ke semua pesanan yang ada (recalculate total)
         </label>
         <div className="flex justify-end gap-2">
-          <Button variant="ghost" type="button" onClick={onClose} className="hover:bg-[#0a2342]/5 text-[#0a2342]">
+          <Button
+            variant="ghost"
+            type="button"
+            onClick={onClose}
+            className="hover:bg-[#0a2342]/5 text-[#0a2342]"
+          >
             Batal
           </Button>
-          <Button type="submit" className="bg-orange-600 hover:bg-orange-700 text-white">
+          <Button
+            type="submit"
+            className="bg-orange-600 hover:bg-orange-700 text-white"
+          >
             Simpan
           </Button>
         </div>

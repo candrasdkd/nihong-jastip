@@ -1,9 +1,23 @@
-export type OrderStatus = 'Pending' | 'Diproses' | 'Selesai' | 'Dibatalkan';
+export type OrderStatus = "Pending" | "Diproses" | "Selesai" | "Dibatalkan";
 
-export type TabId = 'home' | 'orders' | 'customers' | 'purchase' | 'cash' | 'generator' | string;
+export type TabId =
+  | "home"
+  | "orders"
+  | "customers"
+  | "purchase"
+  | "cash"
+  | "generator"
+  | string;
 export interface Order {
-  id?: string; no: string; namaBarang: string; kategori: string; tanggal: string;
-  namaPelanggan: string; jumlahKg: number; totalHarga?: number; status?: OrderStatus;
+  id?: string;
+  no: string;
+  namaBarang: string;
+  kategori: string;
+  tanggal: string;
+  namaPelanggan: string;
+  jumlahKg: number;
+  totalHarga?: number;
+  status?: OrderStatus;
   tipeNominal?: string;
 }
 
@@ -16,23 +30,24 @@ export type Customer = {
   updatedAt?: any;
 };
 export type SubscribeOpts = {
-  q?: string;                 // (belum diimplementasi server-side; gunakan client-side jika perlu)
+  q?: string; // (belum diimplementasi server-side; gunakan client-side jika perlu)
   status?: string;
-  fromInput?: string;         // yyyy-MM-dd (inklusif, 00:00)
-  toInput?: string;           // yyyy-MM-dd (inklusif, 23:59:59)
-  sort?: 'asc' | 'desc';      // default 'desc'
-  limit?: number;             // default 250
+  fromInput?: string; // yyyy-MM-dd (inklusif, 00:00)
+  toInput?: string; // yyyy-MM-dd (inklusif, 23:59:59)
+  sort?: "asc" | "desc"; // default 'desc'
+  limit?: number; // default 250
 };
 // ===== Type Definitions =====
-export type ExtendedOrder = Order & Partial<{
-  pengiriman: string;
-  catatan: string;
-  hargaJastip: number;
-  hargaJastipMarkup: number;
-  hargaOngkir: number;
-  hargaOngkirMarkup: number;
-  tipeNominal: string;
-}>;
+export type ExtendedOrder = Order &
+  Partial<{
+    pengiriman: string;
+    catatan: string;
+    hargaJastip: number;
+    hargaJastipMarkup: number;
+    hargaOngkir: number;
+    hargaOngkirMarkup: number;
+    tipeNominal: string;
+  }>;
 
 export type OrderDoc = {
   id: string;
@@ -58,7 +73,7 @@ export type OrderDoc = {
   updatedAt?: any;
 };
 
-export type PeriodType = '30d' | '3m' | '12m';
+export type PeriodType = "30d" | "3m" | "12m";
 
 export type MonthPoint = {
   key: string;
@@ -92,15 +107,15 @@ export type Option = { label: string; value: string };
 export type ScheduleItem = {
   id: number;
   date: string;
-  status: 'SOLD OUT' | 'LIMITED' | 'AVAILABLE';
+  status: "SOLD OUT" | "LIMITED" | "AVAILABLE";
   value?: string;
 };
 
-export type ThemeType = 'BOARDING' | 'NEON' | 'PASTEL' | 'CARGO';
+export type ThemeType = "BOARDING" | "NEON" | "PASTEL" | "CARGO";
 
 export interface ItemContent {
   id: number;
-  status: 'AVAILABLE' | 'LIMITED' | 'SOLD OUT';
+  status: "AVAILABLE" | "LIMITED" | "SOLD OUT";
   date: string;
   value: number;
 }

@@ -1,9 +1,9 @@
 // Select.tsx
-import React from 'react';
+import React from "react";
 
 type Props = React.SelectHTMLAttributes<HTMLSelectElement> & { label?: string };
 
-export function Select({ label, children, className = '', ...props }: Props) {
+export function Select({ label, children, className = "", ...props }: Props) {
   return (
     <label className="block">
       {label && (
@@ -17,26 +17,28 @@ export function Select({ label, children, className = '', ...props }: Props) {
           {...props}
           className={[
             // ukuran & spacing (stabil di Safari)
-            'block w-full rounded-xl pl-3 pr-10 py-2.5 text-base',
+            "block w-full rounded-xl pl-3 pr-10 py-2.5 text-base",
             // border & bg (dark mode OK)
-            'border border-neutral-300 dark:border-neutral-700',
-            'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100',
+            "border border-neutral-300 dark:border-neutral-700",
+            "bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100",
             // hilangkan UI native Safari (arrow, inner-shadow)
-            'appearance-none [-webkit-appearance:none] [-moz-appearance:none] shadow-none bg-clip-padding',
+            "appearance-none [-webkit-appearance:none] [-moz-appearance:none] shadow-none bg-clip-padding",
             // fokus & aksesibilitas
-            'outline-none focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500',
-            'disabled:opacity-60 disabled:cursor-not-allowed',
-            'transition',
+            "outline-none focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500",
+            "disabled:opacity-60 disabled:cursor-not-allowed",
+            "transition",
             className,
-          ].join(' ')}
+          ].join(" ")}
           // Fallback jika Tailwind arbitrary disabled oleh config
-          style={{
-            WebkitAppearance: 'none',
-            backgroundImage: 'none',
-            WebkitTapHighlightColor: 'transparent',
-            // bantu sistem tentukan palet highlight yang benar di dark mode
-            colorScheme: 'light dark',
-          } as React.CSSProperties}
+          style={
+            {
+              WebkitAppearance: "none",
+              backgroundImage: "none",
+              WebkitTapHighlightColor: "transparent",
+              // bantu sistem tentukan palet highlight yang benar di dark mode
+              colorScheme: "light dark",
+            } as React.CSSProperties
+          }
         >
           {children}
         </select>

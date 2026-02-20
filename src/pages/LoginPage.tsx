@@ -1,7 +1,13 @@
-import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence, useScroll, useTransform, useSpring } from "framer-motion";
-import { login } from '../services/authFirebase';
-import logo from '../assets/nihong.png';
+import { useState, useEffect, useRef } from "react";
+import {
+  motion,
+  AnimatePresence,
+  useScroll,
+  useTransform,
+  useSpring,
+} from "framer-motion";
+import { login } from "../services/authFirebase";
+import logo from "../assets/nihong.png";
 
 /* =========================
 🌸 Sakura Petal (Improved Physics)
@@ -12,7 +18,7 @@ function SakuraPetal({ delay }: { delay: number }) {
     <motion.div
       initial={{ y: -20, x: `${randomX}vw`, rotate: 0, opacity: 0 }}
       animate={{
-        y: '110vh',
+        y: "110vh",
         x: [`${randomX}vw`, `${randomX - 10}vw`, `${randomX + 10}vw`],
         rotate: 720,
         opacity: [0, 0.6, 0.6, 0],
@@ -21,11 +27,17 @@ function SakuraPetal({ delay }: { delay: number }) {
         duration: 12 + Math.random() * 10,
         repeat: Infinity,
         delay,
-        ease: 'linear',
+        ease: "linear",
       }}
       className="absolute pointer-events-none"
     >
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="#fbcfe8" className="drop-shadow-sm">
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="#fbcfe8"
+        className="drop-shadow-sm"
+      >
         <path d="M12 2c2 3 4 3 6 4-1 2-1 4-3 6 2 1 3 3 3 5-2 1-4 1-6-1-1 2-3 2-6 1 0-2 1-4 3-5-2-2-2-4-3-6 2-1 4-1 6-4z" />
       </svg>
     </motion.div>
@@ -53,33 +65,36 @@ const NihonInput = ({ label, type, value, onChange }: any) => (
 );
 
 export function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [transitioning, setTransitioning] = useState(false);
 
   // Parallax Effect
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      setMousePos({ x: (e.clientX / window.innerWidth - 0.5) * 20, y: (e.clientY / window.innerHeight - 0.5) * 20 });
+      setMousePos({
+        x: (e.clientX / window.innerWidth - 0.5) * 20,
+        y: (e.clientY / window.innerHeight - 0.5) * 20,
+      });
     };
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError("");
     try {
       setTransitioning(true);
       setTimeout(async () => {
         try {
           await login(email, password);
         } catch (err) {
-          setError('Invalid Credentials');
+          setError("Invalid Credentials");
           setTransitioning(false);
           setLoading(false);
         }
@@ -114,7 +129,6 @@ export function LoginPage() {
         className="relative z-20 w-full max-w-[420px] px-6"
       >
         <div className="bg-white/70 backdrop-blur-2xl p-10 md:p-14 rounded-[2.5rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.08)] border border-white/50 relative">
-
           <div className="absolute top-10 right-10 w-8 h-8 border-2 border-red-600/20 rounded flex items-center justify-center text-[10px] text-red-600/30 font-bold rotate-12">
             日本
           </div>
@@ -122,7 +136,11 @@ export function LoginPage() {
           <header className="flex flex-col items-center mb-12">
             <motion.div whileHover={{ scale: 1.05 }} className="relative mb-6">
               <div className="absolute inset-0 bg-red-500/10 blur-xl rounded-full" />
-              <img src={logo} alt="Logo" className="relative h-16 w-16 object-contain" />
+              <img
+                src={logo}
+                alt="Logo"
+                className="relative h-16 w-16 object-contain"
+              />
             </motion.div>
 
             <h1 className="text-3xl font-serif text-neutral-800 tracking-tight mb-2">
@@ -130,24 +148,40 @@ export function LoginPage() {
             </h1>
             <div className="flex items-center gap-3">
               <div className="h-[1px] w-8 bg-neutral-200" />
-              <span className="text-[9px] text-neutral-400 font-black uppercase tracking-[0.4em]">Authorized Admin</span>
+              <span className="text-[9px] text-neutral-400 font-black uppercase tracking-[0.4em]">
+                Authorized Admin
+              </span>
               <div className="h-[1px] w-8 bg-neutral-200" />
             </div>
           </header>
 
           <form onSubmit={handleSubmit} className="space-y-2">
-            <NihonInput label="Admin Email" type="email" value={email} onChange={(e: any) => setEmail(e.target.value)} />
-            <NihonInput label="Password" type="password" value={password} onChange={(e: any) => setPassword(e.target.value)} />
+            <NihonInput
+              label="Admin Email"
+              type="email"
+              value={email}
+              onChange={(e: any) => setEmail(e.target.value)}
+            />
+            <NihonInput
+              label="Password"
+              type="password"
+              value={password}
+              onChange={(e: any) => setPassword(e.target.value)}
+            />
 
-            {error && <p className="text-[11px] text-red-500 font-medium text-center pb-4">{error}</p>}
+            {error && (
+              <p className="text-[11px] text-red-500 font-medium text-center pb-4">
+                {error}
+              </p>
+            )}
 
             <motion.button
-              whileHover={{ scale: 1.02, backgroundColor: '#000' }}
+              whileHover={{ scale: 1.02, backgroundColor: "#000" }}
               whileTap={{ scale: 0.98 }}
               disabled={loading}
               className="w-full bg-[#1a1a1a] text-white py-4 rounded-2xl font-bold text-xs tracking-[0.2em] transition-all shadow-xl shadow-black/10 disabled:opacity-50 mt-4"
             >
-              {loading ? 'VERIFYING...' : 'ENTER THE GATE'}
+              {loading ? "VERIFYING..." : "ENTER THE GATE"}
             </motion.button>
           </form>
         </div>
@@ -173,25 +207,32 @@ function ShojiTransition({ active }: { active: boolean }) {
               animate={{ x: "0%" }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.9, ease: [0.65, 0, 0.35, 1] }}
-              className={`w-1/2 h-full bg-[#faf9f6] border-${i === 0 ? 'r-8' : 'l-8'} border-[#2c2c2c] relative`}
+              className={`w-1/2 h-full bg-[#faf9f6] border-${i === 0 ? "r-8" : "l-8"} border-[#2c2c2c] relative`}
             >
               {/* Shoji Paper Texture */}
-              <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
-                style={{ backgroundImage: `url('https://www.transparenttextures.com/patterns/natural-paper.png')` }} />
+              <div
+                className="absolute inset-0 opacity-[0.03] pointer-events-none"
+                style={{
+                  backgroundImage: `url('https://www.transparenttextures.com/patterns/natural-paper.png')`,
+                }}
+              />
 
               {/* Grid Lines */}
-              <div className="absolute inset-0"
+              <div
+                className="absolute inset-0"
                 style={{
                   backgroundImage: `
                      linear-gradient(to right, #2c2c2c 1px, transparent 1px),
                      linear-gradient(to bottom, #2c2c2c 1px, transparent 1px)`,
-                  backgroundSize: '60px 80px',
-                  opacity: 0.08
+                  backgroundSize: "60px 80px",
+                  opacity: 0.08,
                 }}
               />
 
               {/* Handle Area */}
-              <div className={`absolute top-1/2 ${i === 0 ? 'right-4' : 'left-4'} -translate-y-1/2 w-12 h-40 bg-[#2c2c2c] rounded-sm shadow-2xl flex items-center justify-center`}>
+              <div
+                className={`absolute top-1/2 ${i === 0 ? "right-4" : "left-4"} -translate-y-1/2 w-12 h-40 bg-[#2c2c2c] rounded-sm shadow-2xl flex items-center justify-center`}
+              >
                 <div className="w-[1px] h-20 bg-white/20" />
               </div>
             </motion.div>

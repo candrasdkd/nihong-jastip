@@ -1,6 +1,14 @@
 import { LogOutIcon } from "lucide-react";
 import { motion } from "framer-motion";
-export const LogoutModal = ({ isOpen, onClose, onConfirm }: { isOpen: boolean; onClose: () => void; onConfirm: () => void }) => {
+export const LogoutModal = ({
+  isOpen,
+  onClose,
+  onConfirm,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) => {
   if (!isOpen) return null;
 
   return (
@@ -25,9 +33,12 @@ export const LogoutModal = ({ isOpen, onClose, onConfirm }: { isOpen: boolean; o
           <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 grid place-items-center mb-4">
             <LogOutIcon />
           </div>
-          <h3 className="text-lg font-bold text-neutral-900 dark:text-white">Konfirmasi Logout</h3>
+          <h3 className="text-lg font-bold text-neutral-900 dark:text-white">
+            Konfirmasi Logout
+          </h3>
           <p className="text-sm text-neutral-500 mt-2">
-            Apakah Anda yakin ingin keluar dari sesi ini? Anda harus login kembali untuk mengakses data.
+            Apakah Anda yakin ingin keluar dari sesi ini? Anda harus login
+            kembali untuk mengakses data.
           </p>
         </div>
 

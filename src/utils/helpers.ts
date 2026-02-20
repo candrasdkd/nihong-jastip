@@ -1,17 +1,35 @@
-import { ExtendedOrder, Order, OrderDoc } from '../types';
+import { ExtendedOrder, Order, OrderDoc } from "../types";
 
-export const STORAGE_KEYS = { orders: 'jastip_orders_v1', customers: 'jastip_customers_v1', unitPrice: 'jastip_unit_price_v1' };
-export const MONTH_LABEL_ID = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-export const computeTotal = (kg: number, unitPrice: number) => Math.ceil(Math.max(0, kg)) * unitPrice;
+export const STORAGE_KEYS = {
+  orders: "jastip_orders_v1",
+  customers: "jastip_customers_v1",
+  unitPrice: "jastip_unit_price_v1",
+};
+export const MONTH_LABEL_ID = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "Mei",
+  "Jun",
+  "Jul",
+  "Agu",
+  "Sep",
+  "Okt",
+  "Nov",
+  "Des",
+];
+export const computeTotal = (kg: number, unitPrice: number) =>
+  Math.ceil(Math.max(0, kg)) * unitPrice;
 export const todayStr = () => new Date().toISOString().slice(0, 10);
-export const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+export const monthKey = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 export function genOrderNo(existing: Order[]) {
   const d = new Date();
-  const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+  const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
   const countToday = existing.filter((o) => o.no.includes(ymd)).length + 1;
-  return `ORD-${ymd}-${String(countToday).padStart(3, '0')}`;
+  return `ORD-${ymd}-${String(countToday).padStart(3, "0")}`;
 }
-
 
 export const formatAndAddYear = (dateString: string) => {
   // 1. Buat objek Date dari string input
@@ -28,11 +46,11 @@ export const formatAndAddYear = (dateString: string) => {
     year: "numeric" as const,
   };
 
-  return new Intl.DateTimeFormat('id-ID', options).format(date);
+  return new Intl.DateTimeFormat("id-ID", options).format(date);
 };
 
 export function normalizeTanggalString(v?: string) {
-  if (!v) return '';
+  if (!v) return "";
   // Jika sudah 'yyyy-MM-dd' biarkan
   if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
   const d = new Date(v);
@@ -41,11 +59,17 @@ export function normalizeTanggalString(v?: string) {
 }
 
 export function toInputDate(d: Date) {
-  const iso = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString();
+  const iso = new Date(
+    d.getTime() - d.getTimezoneOffset() * 60000,
+  ).toISOString();
   return iso.slice(0, 10);
 }
-export function startOfMonth(d: Date) { return new Date(d.getFullYear(), d.getMonth(), 1); }
-export function endOfMonth(d: Date) { return new Date(d.getFullYear(), d.getMonth() + 1, 0); }
+export function startOfMonth(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+export function endOfMonth(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth() + 1, 0);
+}
 
 // ---- helpers --------------------------------------------------------------
 export function ceilKg(jumlahKg?: number) {
@@ -55,12 +79,15 @@ export function ceilKg(jumlahKg?: number) {
 export function computeDerived(input: Partial<OrderDoc>, unitPrice: number) {
   const kgCeil = ceilKg(input.jumlahKg);
   const baseOngkir =
-    typeof input.hargaOngkir === 'number' ? input.hargaOngkir : kgCeil * unitPrice;
+    typeof input.hargaOngkir === "number"
+      ? input.hargaOngkir
+      : kgCeil * unitPrice;
   const baseJastip = Number(input.hargaJastip ?? 0);
   const jastipMarkup = Number(input.hargaJastipMarkup ?? 0);
   const ongkirMarkup = Number(input.hargaOngkirMarkup ?? 0);
   const totalPembayaran = baseJastip + baseOngkir;
-  const totalKeuntungan = jastipMarkup + ongkirMarkup - (baseOngkir + baseJastip);
+  const totalKeuntungan =
+    jastipMarkup + ongkirMarkup - (baseOngkir + baseJastip);
   return {
     kgCeil,
     baseOngkir,
@@ -75,15 +102,17 @@ export function computeDerived(input: Partial<OrderDoc>, unitPrice: number) {
 export const compute = (o: ExtendedOrder, unitPrice: number) => {
   const kg = Math.ceil(Number(o.jumlahKg ?? 0));
   // Ambil currency dari order, default ke IDR jika tidak ada
-  const currency = o.tipeNominal || 'IDR';
+  const currency = o.tipeNominal || "IDR";
 
-  const baseOngkir = typeof o.hargaOngkir === 'number' ? o.hargaOngkir : kg * unitPrice;
+  const baseOngkir =
+    typeof o.hargaOngkir === "number" ? o.hargaOngkir : kg * unitPrice;
   const jastipMarkup = Number(o.hargaJastipMarkup ?? 0);
   const baseJastip = Number(o.hargaJastip ?? 0);
   const ongkirMarkup = Number(o.hargaOngkirMarkup ?? 0);
 
   const totalPembayaran = jastipMarkup + ongkirMarkup;
-  const totalKeuntungan = (jastipMarkup + ongkirMarkup) - (baseOngkir + baseJastip);
+  const totalKeuntungan =
+    jastipMarkup + ongkirMarkup - (baseOngkir + baseJastip);
 
   return {
     kg,
@@ -93,10 +122,9 @@ export const compute = (o: ExtendedOrder, unitPrice: number) => {
     ongkirMarkup,
     totalPembayaran,
     totalKeuntungan,
-    currency
+    currency,
   };
 };
-
 
 export function getOrderRevenue(o: any) {
   return Number(o?.totalPembayaran ?? o?.totalHarga ?? 0) || 0;
@@ -106,26 +134,26 @@ export function getOrderProfit(o: any) {
 }
 export function getMonthKey(dateStr?: string) {
   if (!dateStr) return null;
-  const norm = dateStr.replace(/\//g, '-');
+  const norm = dateStr.replace(/\//g, "-");
   const m = norm.match(/^(\d{4})-(\d{2})/);
   return m ? `${m[1]}-${m[2]}` : null;
 }
 
 export function toWaNumber(raw?: string) {
-  if (!raw) return '';
-  const digits = (raw.match(/\d+/g) || []).join('');
-  if (!digits) return '';
-  if (digits.startsWith('62')) return digits;
-  if (digits.startsWith('0')) return '62' + digits.slice(1);
-  if (digits.startsWith('8')) return '62' + digits;
+  if (!raw) return "";
+  const digits = (raw.match(/\d+/g) || []).join("");
+  if (!digits) return "";
+  if (digits.startsWith("62")) return digits;
+  if (digits.startsWith("0")) return "62" + digits.slice(1);
+  if (digits.startsWith("8")) return "62" + digits;
   return digits;
 }
 export function openWhatsApp(rawNumber?: string, message?: string) {
   const wa = toWaNumber(rawNumber);
   if (!wa) {
-    alert('Nomor telepon tidak valid atau kosong.');
+    alert("Nomor telepon tidak valid atau kosong.");
     return;
   }
-  const url = `https://wa.me/${wa}${message ? `?text=${encodeURIComponent(message)}` : ''}`;
-  window.open(url, '_blank', 'noopener,noreferrer');
+  const url = `https://wa.me/${wa}${message ? `?text=${encodeURIComponent(message)}` : ""}`;
+  window.open(url, "_blank", "noopener,noreferrer");
 }

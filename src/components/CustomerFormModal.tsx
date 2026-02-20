@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { Input } from './ui/Input';
-import { TextArea } from './ui/TextArea';
-import { Button } from './ui/Button';
-import { Modal } from './ui/Modal';
+import React, { useState } from "react";
+import { Input } from "./ui/Input";
+import { TextArea } from "./ui/TextArea";
+import { Button } from "./ui/Button";
+import { Modal } from "./ui/Modal";
 
-const NAVY = '#0a2342';
+const NAVY = "#0a2342";
 
 export type CustomerFormValues = {
   id?: string;
@@ -22,9 +22,9 @@ export function CustomerFormModal({
   onClose: () => void;
   onSubmit: (c: CustomerFormValues) => Promise<any> | any; // boleh async
 }) {
-  const [nama, setNama] = useState(initial?.nama ?? '');
-  const [alamat, setAlamat] = useState(initial?.alamat ?? '');
-  const [telpon, setTelpon] = useState(initial?.telpon ?? '');
+  const [nama, setNama] = useState(initial?.nama ?? "");
+  const [alamat, setAlamat] = useState(initial?.alamat ?? "");
+  const [telpon, setTelpon] = useState(initial?.telpon ?? "");
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -43,14 +43,17 @@ export function CustomerFormModal({
       // Catatan: biasanya parent akan menutup modal ketika sukses.
       // Kalau mau modal ini yang menutup, bisa panggil onClose() di sini.
     } catch (err: any) {
-      setErrorMsg(err?.message || 'Gagal menyimpan data.');
+      setErrorMsg(err?.message || "Gagal menyimpan data.");
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <Modal onClose={submitting ? undefined : onClose} title={initial?.id ? 'Edit Konsumen' : 'Tambah Konsumen'}>
+    <Modal
+      onClose={submitting ? undefined : onClose}
+      title={initial?.id ? "Edit Konsumen" : "Tambah Konsumen"}
+    >
       <form onSubmit={submit} className="grid grid-cols-1 gap-4">
         {errorMsg && (
           <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -106,7 +109,14 @@ export function CustomerFormModal({
                   fill="none"
                   aria-hidden="true"
                 >
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
                   <path
                     className="opacity-75"
                     fill="currentColor"
@@ -116,7 +126,7 @@ export function CustomerFormModal({
                 Menyimpan...
               </span>
             ) : (
-              'Simpan'
+              "Simpan"
             )}
           </Button>
         </div>
