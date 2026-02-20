@@ -5,8 +5,8 @@ import { Smartphone, Download, X } from 'lucide-react';
 export function InstallPrompt() {
     const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
     const [showPrompt, setShowPrompt] = useState(false);
-    const [isMobile, setIsMobile] = useState(false);
     const [isIOS, setIsIOS] = useState(false);
+    const [isSafari, setIsSafari] = useState(false);
     const [isStandalone, setIsStandalone] = useState(false);
 
     useEffect(() => {
@@ -16,15 +16,18 @@ export function InstallPrompt() {
             return; // Jangan lanjut script
         }
 
-        // Detect mobile
-        const checkMobile = () => {
+        // Detect devices
+        const checkDevice = () => {
             const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
-            const mobileRegex = /android|iphone|ipad|ipod|blackberry|iemobile|opera mini/i;
-            setIsMobile(mobileRegex.test(userAgent.toLowerCase()));
-            setIsIOS(/ipad|iphone|ipod/i.test(userAgent.toLowerCase()));
+            const iosMatch = /ipad|iphone|ipod/i.test(userAgent.toLowerCase());
+            // Deteksi iPadOS 13+ yang masquerade sebagai Mac
+            const isIPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+
+            setIsIOS(iosMatch || isIPadOS);
+            setIsSafari(/safari/i.test(userAgent.toLowerCase()) && !/chrome|crios|fxios/i.test(userAgent.toLowerCase()));
         };
 
-        checkMobile();
+        checkDevice();
 
         // Listen for PWA install prompt
         const handleBeforeInstallPrompt = (e: Event) => {
@@ -34,7 +37,7 @@ export function InstallPrompt() {
 
         window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
-        // Paksa Muncul jika dia mobile dan belum terinstall
+        // Paksa Muncul jika belum terinstall (Berlaku untuk Mobile maupun Desktop yg mendukung)
         // Tunggu 2 detik setelah buka web
         const timer = setTimeout(() => {
             setShowPrompt(true);
@@ -48,7 +51,7 @@ export function InstallPrompt() {
 
     const handleInstallClick = async () => {
         if (deferredPrompt) {
-            // Native install prompt tersedia (Android/Chrome)
+            // Native install prompt tersedia (Android/Chrome Desktop)
             deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
             if (outcome === 'accepted') {
@@ -57,9 +60,11 @@ export function InstallPrompt() {
             setDeferredPrompt(null);
             setShowPrompt(false);
         } else {
-            // Fallback instruction (iOS/Safari atau jika native prompt disembunyikan/cooling)
+            // Fallback instruction
             if (isIOS) {
-                alert('Untuk install: Tap icon Share (Bagikan) 📤 di bawah layar, lalu pilih "Add to Home Screen" (Tambahkan ke Layar Utama)');
+                alert('Untuk install di iOS/iPad: Tap icon Share (Bagikan) 📤 di bawah/atas layar, lalu pilih "Add to Home Screen" (Tambahkan ke Layar Utama)');
+            } else if (isSafari) {
+                alert('Untuk install di Safari Mac: Buka menu File di menu bar atas, lalu pilih "Add to Dock"');
             } else {
                 alert('Untuk install: Tap menu titik 3 ⋮ di pojok kanan atas browser, lalu pilih "Add to Home screen" / "Install app"');
             }
@@ -67,7 +72,7 @@ export function InstallPrompt() {
         }
     };
 
-    if (!showPrompt || isStandalone || !isMobile) return null;
+    if (!showPrompt || isStandalone) return null;
 
     return (
         <AnimatePresence>
