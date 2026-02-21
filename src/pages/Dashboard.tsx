@@ -530,6 +530,16 @@ export function Dashboard({
 }) {
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
 
+  // Auto-request notification permission on mount
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      const timer = setTimeout(() => {
+        notificationService.requestPermission();
+      }, 1500); // Small delay for better UX
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
   // State tambahan untuk mengontrol fitur mana yang dibuka saat tab Aplikasi aktif
   const [appFeature, setAppFeature] = useState<string | null>(null);
 
