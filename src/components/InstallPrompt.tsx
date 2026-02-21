@@ -20,43 +20,57 @@ export function InstallPrompt() {
     }
 
     // Detect devices
-    const checkDevice = () => {
+    const getDeviceType = () => {
       const userAgent =
         navigator.userAgent || navigator.vendor || (window as any).opera;
-      const iosMatch = /ipad|iphone|ipod/i.test(userAgent.toLowerCase());
-      // Deteksi iPadOS 13+ yang masquerade sebagai Mac
-      const isIPadOS =
-        navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+      const agentLower = userAgent.toLowerCase();
 
-      setIsIOS(iosMatch || isIPadOS);
-      setIsSafari(
-        /safari/i.test(userAgent.toLowerCase()) &&
-          !/chrome|crios|fxios/i.test(userAgent.toLowerCase()),
-      );
+      const isMobile = /android|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(agentLower);
+      const isAndroid = /android/i.test(agentLower);
+      const isIOS = /ipad|iphone|ipod/i.test(agentLower) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+      const isSafari = /safari/i.test(agentLower) && !/chrome|crios|fxios/i.test(agentLower);
+
+      return { isMobile, isAndroid, isIOS, isSafari };
     };
 
-    checkDevice();
+    const { isMobile, isAndroid, isIOS, isSafari } = getDeviceType();
 
-    // Listen for PWA install prompt
+    if (!isMobile) {
+      console.log("[InstallPrompt] Desktop detected, skipping prompt.");
+      return;
+    }
+
+    setIsIOS(isIOS);
+    setIsSafari(isSafari);
+
+    // Listen for PWA install prompt (Mainly Android Chrome / Samsung Internet)
     const handleBeforeInstallPrompt = (e: Event) => {
+      console.log("[InstallPrompt] Capture beforeinstallprompt event");
       e.preventDefault();
       setDeferredPrompt(e);
+
+      // On Android, show modal when native prompt is ready
+      if (isAndroid) {
+        setShowPrompt(true);
+      }
     };
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
 
-    // Paksa Muncul jika belum terinstall (Berlaku untuk Mobile maupun Desktop yg mendukung)
-    // Tunggu 2 detik setelah buka web
-    const timer = setTimeout(() => {
-      setShowPrompt(true);
-    }, 2000);
+    // If iOS, show prompt after delay (no event exists)
+    let timer: any;
+    if (isIOS) {
+      timer = setTimeout(() => {
+        setShowPrompt(true);
+      }, 3000);
+    }
 
     return () => {
       window.removeEventListener(
         "beforeinstallprompt",
         handleBeforeInstallPrompt,
       );
-      clearTimeout(timer);
+      if (timer) clearTimeout(timer);
     };
   }, []);
 

@@ -15,6 +15,7 @@ import { TabButton } from "./components/ui/TabButton";
 import { UnitPriceModal } from "./components/UnitPriceModal";
 import { BottomTabBar } from "./components/BottomTabBar";
 import { InstallPrompt } from "./components/InstallPrompt";
+import { NotificationPermissionModal } from "./components/NotificationPermissionModal";
 
 // Assets & Services
 import logoLight from "./assets/logo-admin.png";
@@ -54,6 +55,10 @@ export default function App() {
   // Modal States
   const [showUnitPriceModal, setShowUnitPriceModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(
+    "Notification" in window ? Notification.permission : "default"
+  );
 
   // 🔐 AUTH STATE
   const [user, setUser] = useState<User | null>(null);
@@ -66,6 +71,22 @@ export default function App() {
       setAuthLoading(false);
     });
     return () => unsub();
+  }, []);
+
+  // 🔔 Check Notification Permission
+  useEffect(() => {
+    if ("Notification" in window) {
+      const perm = Notification.permission;
+      setNotificationPermission(perm);
+
+      if (perm !== "granted") {
+        // Show modal after a short delay to not overwhelm the user immediately
+        const timer = setTimeout(() => {
+          setShowNotificationModal(true);
+        }, 3000);
+        return () => clearTimeout(timer);
+      }
+    }
   }, []);
 
   // 🔊 Realtime customers
@@ -112,6 +133,14 @@ export default function App() {
   const handleLogoutConfirm = () => {
     setShowLogoutModal(false);
     logout();
+  };
+
+  const handleEnableNotifications = async () => {
+    const res = await notificationService.requestPermission();
+    setNotificationPermission(res);
+    if (res === "granted") {
+      setShowNotificationModal(false);
+    }
   };
 
   // ⏳ Loading Screen
@@ -304,6 +333,12 @@ export default function App() {
       {/* NAVBAR MOBILE */}
       <BottomTabBar current={tab} setTab={setTab} />
       <InstallPrompt />
+      <NotificationPermissionModal
+        isOpen={showNotificationModal}
+        isDenied={notificationPermission === "denied"}
+        onClose={() => setShowNotificationModal(false)}
+        onConfirm={handleEnableNotifications}
+      />
     </div>
   );
 }
