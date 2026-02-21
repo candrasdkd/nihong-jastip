@@ -25,6 +25,7 @@ import { listenAuth, logout } from "./services/authFirebase";
 import { endOfMonth, startOfMonth, toInputDate } from "./utils/helpers";
 import StoryGeneratorDynamic from "./pages/StoryGeneratorPage";
 import { LogoutModal } from "./components/ModalLogout";
+import { notificationService } from "./services/notificationService";
 // Icon Sederhana
 const LogoutIcon = () => (
   <svg
@@ -96,6 +97,17 @@ export default function App() {
 
     return () => unsub();
   }, [tab, user]);
+
+  // 🔔 Notification Logic
+  useEffect(() => {
+    if (orders.length > 0 && tab === "home") {
+      // Check for pending orders after some delay to allow state to settle
+      const timer = setTimeout(() => {
+        notificationService.checkAndNotifyOrders(orders);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [orders, tab]);
 
   const handleLogoutConfirm = () => {
     setShowLogoutModal(false);

@@ -31,7 +31,10 @@ import {
   LayoutDashboard,
   AppWindow,
   Settings,
+  Bell,
+  BellOff,
 } from "lucide-react";
+import { notificationService } from "../services/notificationService";
 
 // --- KOMPONEN BANTUAN (UI KECIL) ---
 
@@ -39,11 +42,10 @@ function GrowthBadge({ value }: { value: number }) {
   const positive = value >= 0;
   return (
     <div
-      className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border ${
-        positive
-          ? "bg-emerald-50 text-emerald-700 border-emerald-100"
-          : "bg-rose-50 text-rose-700 border-rose-100"
-      }`}
+      className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border ${positive
+        ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+        : "bg-rose-50 text-rose-700 border-rose-100"
+        }`}
     >
       {positive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
       <span>{Math.abs(value).toFixed(1)}%</span>
@@ -87,7 +89,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
             <span className="text-slate-500 capitalize">{entry.name}:</span>
             <span className="font-medium ml-auto">
               {entry.name.includes("Pendapatan") ||
-              entry.name.includes("Profit")
+                entry.name.includes("Profit")
                 ? formatIDR(entry.value)
                 : entry.value}
             </span>
@@ -207,11 +209,10 @@ function DashboardView({
             <button
               key={p.value}
               onClick={() => setPeriod(p.value as PeriodType)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                period === p.value
-                  ? "bg-slate-900 text-white shadow-sm"
-                  : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
-              }`}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${period === p.value
+                ? "bg-slate-900 text-white shadow-sm"
+                : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+                }`}
             >
               {p.label}
             </button>
@@ -427,7 +428,87 @@ function ApplicationView({
             <p className="text-sm text-slate-500">{feature.desc}</p>
           </button>
         ))}
+
+        {/* NOTIFICATION CARD */}
+        <NotificationCard />
       </div>
+    </div>
+  );
+}
+
+function NotificationCard() {
+  const [permission, setPermission] = useState<NotificationPermission>(
+    "Notification" in window ? Notification.permission : "denied",
+  );
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleRequest = async () => {
+    setIsLoading(true);
+    try {
+      const res = await notificationService.requestPermission();
+      setPermission(res);
+      if (res === "granted") {
+        notificationService.showLocalNotification("Notifikasi Aktif!", {
+          body: "Terima kasih telah mengaktifkan notifikasi Nihong Jastip.",
+        });
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleTest = () => {
+    notificationService.showLocalNotification("Tes Notifikasi", {
+      body: "Halo! Notifikasi berhasil diaktifkan dan dikirim melalui Service Worker 🚀",
+      tag: "test-notif",
+    });
+  };
+
+  const isSupported = "Notification" in window;
+
+  return (
+    <div className="flex flex-col text-left p-6 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-200">
+      <div
+        className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 ${permission === "granted" ? "bg-emerald-100 text-emerald-600" : "bg-amber-100 text-amber-600"}`}
+      >
+        {permission === "granted" ? <Bell size={28} /> : <BellOff size={28} />}
+      </div>
+      <h3 className="text-lg font-bold text-slate-800 mb-1">Notifikasi Push</h3>
+      <p className="text-sm text-slate-500 mb-4">
+        {!isSupported
+          ? "Browser Anda tidak mendukung fitur notifikasi."
+          : permission === "granted"
+            ? "Notifikasi sudah aktif di browser ini."
+            : permission === "denied"
+              ? "Akses diblokir. Silakan aktifkan manual di setelan browser."
+              : "Aktifkan agar tidak ketinggalan info pesanan baru."
+        }
+      </p>
+
+      {permission === "default" && isSupported && (
+        <button
+          onClick={handleRequest}
+          disabled={isLoading}
+          className="mt-auto py-2 px-4 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-colors active:scale-95 disabled:opacity-50"
+        >
+          {isLoading ? "Memproses..." : "Aktifkan Notifikasi"}
+        </button>
+      )}
+
+      {permission === "granted" && (
+        <button
+          onClick={handleTest}
+          className="mt-auto py-2 px-4 bg-slate-100 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-200 transition-colors active:scale-95"
+        >
+          Kirim Notifikasi Tes
+        </button>
+      )}
+
+      {permission === "denied" && isSupported && (
+        <div className="mt-auto p-2 bg-rose-50 text-rose-600 rounded-lg text-[10px] font-medium text-center">
+          Reset permission di browser & refresh halaman.
+        </div>
+      )}
     </div>
   );
 }
@@ -472,22 +553,20 @@ export function Dashboard({
           <div className="bg-white p-1.5 rounded-full border border-slate-200 shadow-sm inline-flex">
             <button
               onClick={() => handleTabChange("dashboard")}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 ${
-                activeTab === "dashboard"
-                  ? "bg-slate-900 text-white shadow-md transform scale-105"
-                  : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
-              }`}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 ${activeTab === "dashboard"
+                ? "bg-slate-900 text-white shadow-md transform scale-105"
+                : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
+                }`}
             >
               <LayoutDashboard size={18} />
               Dashboard
             </button>
             <button
               onClick={() => handleTabChange("application")}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 ${
-                activeTab === "application"
-                  ? "bg-slate-900 text-white shadow-md transform scale-105"
-                  : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
-              }`}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 ${activeTab === "application"
+                ? "bg-slate-900 text-white shadow-md transform scale-105"
+                : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
+                }`}
             >
               <AppWindow size={18} />
               Aplikasi
