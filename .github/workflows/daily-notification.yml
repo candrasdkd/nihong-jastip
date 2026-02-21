@@ -24,4 +24,4 @@ jobs:
       - name: Run notification script
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        run: node scripts/send_daily_notification.js
+        run: node scripts/send_daily_notification.cjs
