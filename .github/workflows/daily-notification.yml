@@ -1,0 +1,27 @@
+name: Daily Notification
+
+on:
+  schedule:
+    # Runs at 01:00 UTC (08:00 WIB) every day
+    - cron: '0 1 * * *'
+  workflow_dispatch: # Allows manual triggering from the UI
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install firebase-admin
+
+      - name: Run notification script
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node scripts/send_daily_notification.js
