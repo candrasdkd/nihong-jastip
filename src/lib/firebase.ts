@@ -9,6 +9,7 @@ import {
   type Firestore,
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
+import { getMessaging } from "firebase/messaging";
 
 // ---- helpers ENV ----
 function must(key: string): string {
@@ -35,14 +36,13 @@ const firebaseConfig = {
 // Reuse app jika sudah ada (hindari duplikasi init di HMR)
 const app: FirebaseApp = getApps()[0] ?? initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+export const messaging = typeof window !== "undefined" ? getMessaging(app) : null;
 // Log detail untuk debug network/rules
 // setLogLevel('debug');
 
 // ✅ Firestore dengan fallback transport & cache yang stabil di browser
 export const db: Firestore = initializeFirestore(app, {
-  experimentalAutoDetectLongPolling: true, // fallback otomatis bila streaming gagal
-  // Jika masih bermasalah, ubah ke force:
-  // experimentalForceLongPolling: true,
+  experimentalForceLongPolling: true, // Dipaksa agar stabil di Safari
   localCache: persistentLocalCache({
     tabManager: persistentMultipleTabManager(),
   }),

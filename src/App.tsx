@@ -246,6 +246,7 @@ export default function App() {
           >
             {tab === "home" && (
               <Dashboard
+                user={user!}
                 orders={orders}
                 customers={customers}
                 onSeeAllOrders={() => setTab("orders")}

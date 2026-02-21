@@ -62,6 +62,35 @@ self.addEventListener("notificationclick", (event) => {
 });
 
 /**
+ * Firebase Messaging Setup (Background)
+ */
+import { initializeApp } from "firebase/app";
+import { getMessaging, onBackgroundMessage } from "firebase/messaging/sw";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyAKLT4Q8cSJQAMMlPdY1_kND763IV63JKg",
+    authDomain: "nihong-4b93e.firebaseapp.com",
+    projectId: "nihong-4b93e",
+    storageBucket: "nihong-4b93e.firebasestorage.app",
+    messagingSenderId: "52461842773",
+    appId: "1:52461842773:web:7422a8e7083bfa5d0affdc"
+};
+
+const app = initializeApp(firebaseConfig);
+const messaging = getMessaging(app);
+
+onBackgroundMessage(messaging, (payload) => {
+    const notificationTitle = payload.notification?.title || 'Nihong Jastip';
+    const notificationOptions = {
+        body: payload.notification?.body || 'Ada pesan baru.',
+        icon: '/pwa-192x192.png',
+        badge: '/pwa-192x192.png',
+    };
+
+    self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+/**
  * Handle messages from the main thread
  */
 self.addEventListener("message", (event) => {

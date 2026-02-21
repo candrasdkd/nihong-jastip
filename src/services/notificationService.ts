@@ -41,7 +41,6 @@ export const notificationService = {
      */
     async showLocalNotification(title: string, options?: NotificationOptions) {
         if (!this.isPermissionGranted()) {
-            console.warn("[NotificationService] Permission not granted.");
             return;
         }
 
@@ -55,7 +54,7 @@ export const notificationService = {
         };
 
         try {
-            // Prefer Service Worker for PWA compatibility
+            // Method 1: Using Service Worker (PWA)
             if ("serviceWorker" in navigator) {
                 const registration = await navigator.serviceWorker.ready;
                 if (registration) {
@@ -64,10 +63,18 @@ export const notificationService = {
                 }
             }
 
-            // Fallback to standard API
+            // Method 2: Standard API
             new Notification(title, notificationOptions);
         } catch (error) {
             console.error("[NotificationService] Error showing notification:", error);
+
+            // Fallback (Method 3): Post to Service Worker
+            if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({
+                    type: "SHOW_NOTIFICATION",
+                    payload: { title, options: notificationOptions },
+                });
+            }
         }
     },
 
@@ -76,7 +83,6 @@ export const notificationService = {
      */
     checkAndNotifyOrders(orders: any[]) {
         const pendingOrders = orders.filter(o => o.status === "Pending" || o.status === "Belum Membayar");
-        console.log(`[NotificationService] Checking ${orders.length} orders, found ${pendingOrders.length} pending.`);
 
         if (pendingOrders.length > 0) {
             this.showLocalNotification("Pesanan Butuh Perhatian", {

@@ -387,8 +387,12 @@ function DashboardView({
 // --- BAGIAN 2: TAMPILAN APLIKASI (MENU CARD GRID) ---
 
 function ApplicationView({
+  user,
+  registerFCM,
   setActiveFeature,
 }: {
+  user: any;
+  registerFCM: () => void;
   setActiveFeature: (value: string) => void;
 }) {
   // --- MAIN MENU GRID ---
@@ -430,13 +434,13 @@ function ApplicationView({
         ))}
 
         {/* NOTIFICATION CARD */}
-        <NotificationCard />
+        <NotificationCard user={user} registerFCM={registerFCM} />
       </div>
     </div>
   );
 }
 
-function NotificationCard() {
+function NotificationCard({ user, registerFCM }: { user: any, registerFCM: () => void }) {
   const [permission, setPermission] = useState<NotificationPermission>(
     "Notification" in window ? Notification.permission : "denied",
   );
@@ -449,9 +453,12 @@ function NotificationCard() {
       setPermission(res);
       if (res === "granted") {
         notificationService.showLocalNotification("Notifikasi Aktif!", {
-          body: "Terima kasih telah mengaktifkan notifikasi Nihong Jastip.",
+          body: "Sistem sekarang siap mengirimkan notifikasi harian.",
         });
+        registerFCM();
       }
+    } catch (err) {
+      console.error("[NotificationCard] handleRequest error:", err);
     } finally {
       setIsLoading(false);
     }
@@ -462,6 +469,7 @@ function NotificationCard() {
       body: "Halo! Notifikasi berhasil diaktifkan dan dikirim melalui Service Worker 🚀",
       tag: "test-notif",
     });
+    registerFCM();
   };
 
   const isSupported = "Notification" in window;
@@ -496,12 +504,20 @@ function NotificationCard() {
       )}
 
       {permission === "granted" && (
-        <button
-          onClick={handleTest}
-          className="mt-auto py-2 px-4 bg-slate-100 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-200 transition-colors active:scale-95"
-        >
-          Kirim Notifikasi Tes
-        </button>
+        <div className="mt-auto flex flex-col gap-2">
+          <button
+            onClick={handleTest}
+            className="py-2 px-4 bg-slate-100 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-200 transition-colors active:scale-95"
+          >
+            Kirim Notifikasi Tes
+          </button>
+          <button
+            onClick={registerFCM}
+            className="py-1 px-4 text-xs text-indigo-600 font-medium hover:underline"
+          >
+            Refresh Token FCM
+          </button>
+        </div>
       )}
 
       {permission === "denied" && isSupported && (
@@ -518,11 +534,13 @@ function NotificationCard() {
 type TabType = "dashboard" | "application";
 
 export function Dashboard({
+  user,
   orders,
   customers,
   onSeeAllOrders,
   setActiveFeature,
 }: {
+  user: any;
   orders: Order[];
   customers: Customer[];
   onSeeAllOrders: () => void;
@@ -530,15 +548,25 @@ export function Dashboard({
 }) {
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
 
-  // Auto-request notification permission on mount
+  // FCM Registration logic moved here so it runs immediately on Dashboard mount
   useEffect(() => {
-    if ("Notification" in window && Notification.permission === "default") {
-      const timer = setTimeout(() => {
-        notificationService.requestPermission();
-      }, 1500); // Small delay for better UX
-      return () => clearTimeout(timer);
+    if (("Notification" in window) && Notification.permission === "granted" && user?.uid) {
+      registerFCM();
     }
-  }, []);
+  }, [user?.uid]);
+
+  const registerFCM = async () => {
+    const VAPID_KEY = (import.meta as any).env.VITE_FIREBASE_VAPID_KEY;
+
+    if (VAPID_KEY && user?.uid) {
+      try {
+        const { fcmService } = await import("../services/fcmService");
+        await fcmService.registerToken(user.uid, VAPID_KEY);
+      } catch (err) {
+        console.error("[Dashboard] FCM Registration Error:", err);
+      }
+    }
+  };
 
   // State tambahan untuk mengontrol fitur mana yang dibuka saat tab Aplikasi aktif
   const [appFeature, setAppFeature] = useState<string | null>(null);
@@ -593,7 +621,11 @@ export function Dashboard({
             onSeeAllOrders={onSeeAllOrders}
           />
         ) : (
-          <ApplicationView setActiveFeature={setActiveFeature} />
+          <ApplicationView
+            user={user}
+            registerFCM={registerFCM}
+            setActiveFeature={setActiveFeature}
+          />
         )}
       </div>
     </div>
