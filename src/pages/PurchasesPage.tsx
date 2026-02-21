@@ -37,8 +37,13 @@ import {
   Filter,
   ChevronDown,
   MoreHorizontal,
+  Image as ImageIcon,
+  Upload,
 } from "lucide-react";
 import { formatAndAddYear } from "../utils/helpers";
+import { compressImage } from "../utils/image";
+
+// --- TYPES ---
 import { PIC_OPTIONS, PLATFORM_OPTIONS } from "../utils/constants";
 import { PurchaseItem, ShareConfig } from "../types";
 
@@ -113,6 +118,7 @@ export default function PurchasesPage() {
     note: "",
     shippingDate: "",
     isDone: false,
+    imageUrl: "",
   };
   const [form, setForm] = useState(emptyForm);
   const [drafts, setDrafts] = useState<Omit<PurchaseItem, "id">[]>([]);
@@ -125,6 +131,51 @@ export default function PurchasesPage() {
   });
 
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      // Compress image before upload
+      const compressedBlob = await compressImage(file, 1200, 1200, 0.7);
+
+      const cloudName = (import.meta as any).env.VITE_CLOUDINARY_CLOUD_NAME;
+      const uploadPreset = (import.meta as any).env.VITE_CLOUDINARY_UPLOAD_PRESET;
+
+      if (!cloudName || !uploadPreset || cloudName === "your_cloud_name") {
+        alert("Konfigurasi Cloudinary belum lengkap di .env");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("file", compressedBlob, file.name);
+      formData.append("upload_preset", uploadPreset);
+
+      const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+      const data = await res.json();
+      if (data.secure_url) {
+        setForm((prev) => ({ ...prev, imageUrl: data.secure_url }));
+      } else if (data.error) {
+        alert(`Cloudinary Error: ${data.error.message}`);
+      }
+    } catch (err) {
+      console.error("Upload error:", err);
+      alert("Gagal mengunggah gambar. Pastikan koneksi internet oke dan setting Cloudinary benar.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   // --- EFFECT ---
   useEffect(() => {
@@ -562,6 +613,24 @@ export default function PurchasesPage() {
                                           )}
                                         </button>
 
+                                        {item.imageUrl && (
+                                          <div
+                                            className="w-12 h-12 rounded-lg overflow-hidden border border-slate-100 shrink-0 cursor-pointer"
+                                            onClick={() =>
+                                              window.open(
+                                                item.imageUrl,
+                                                "_blank"
+                                              )
+                                            }
+                                          >
+                                            <img
+                                              src={item.imageUrl}
+                                              className="w-full h-full object-cover"
+                                              alt={item.name}
+                                            />
+                                          </div>
+                                        )}
+
                                         <div className="flex-1 min-w-0 pt-0.5">
                                           <div className="flex justify-between items-start">
                                             <h5
@@ -596,6 +665,7 @@ export default function PurchasesPage() {
                                                       item.platform || "",
                                                     link: item.link || "",
                                                     note: item.note || "",
+                                                    imageUrl: item.imageUrl || "",
                                                   });
                                                   setIsOpen(true);
                                                 }}
@@ -852,6 +922,62 @@ export default function PurchasesPage() {
                       </div>
 
                       {/* Optional */}
+                      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
+                            Foto Produk
+                          </label>
+                          <div className="flex items-center gap-4">
+                            {form.imageUrl ? (
+                              <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-200">
+                                <img
+                                  src={form.imageUrl}
+                                  alt="Preview"
+                                  className="w-full h-full object-cover"
+                                />
+                                <button
+                                  onClick={() =>
+                                    setForm({ ...form, imageUrl: "" })
+                                  }
+                                  className="absolute top-1 right-1 bg-white/80 p-1 rounded-full text-red-500"
+                                >
+                                  <X size={12} />
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={isUploading}
+                                className="w-20 h-20 rounded-xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 hover:border-orange-400 hover:text-orange-400 transition-colors"
+                              >
+                                {isUploading ? (
+                                  <Loader2 size={24} className="animate-spin" />
+                                ) : (
+                                  <>
+                                    <ImageIcon size={24} />
+                                    <span className="text-[9px] font-bold mt-1">
+                                      UPLOAD
+                                    </span>
+                                  </>
+                                )}
+                              </button>
+                            )}
+                            <input
+                              type="file"
+                              ref={fileInputRef}
+                              className="hidden"
+                              accept="image/*"
+                              onChange={handleFileUpload}
+                            />
+                            <div className="flex-1">
+                              <p className="text-[10px] text-slate-400">
+                                Unggah foto untuk memudahkan pencarian barang saat di toko.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
                       <details className="group bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
                         <summary className="list-none flex justify-between items-center cursor-pointer">
                           <span className="text-xs font-bold text-slate-500">

@@ -22,6 +22,8 @@ import {
   toInputDate,
 } from "../utils/helpers";
 import { ORDER_STATUSES } from "../utils/constants";
+import { AnimatePresence, motion } from "framer-motion";
+import { X, Maximize2 } from "lucide-react";
 
 // ===== ICONS =====
 const IconPlus = (p: React.SVGProps<SVGSVGElement>) => (
@@ -215,6 +217,48 @@ const IconCheckCircle = (p: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+// ===== IMAGE PREVIEW MODAL =====
+function ImagePreview({
+  src,
+  onClose,
+}: {
+  src: string | null;
+  onClose: () => void;
+}) {
+  if (!src) return null;
+  return (
+    <AnimatePresence>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm"
+        />
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.9, opacity: 0 }}
+          className="relative max-w-4xl max-h-[90vh] z-10"
+        >
+          <button
+            onClick={onClose}
+            className="absolute -top-4 -right-4 bg-white text-slate-900 p-2 rounded-full shadow-xl hover:bg-slate-100 transition-colors z-20"
+          >
+            <X size={20} />
+          </button>
+          <img
+            src={src}
+            alt="Preview"
+            className="w-full h-full object-contain rounded-2xl shadow-2xl border-4 border-white/10"
+          />
+        </motion.div>
+      </div>
+    </AnimatePresence>
+  );
+}
+
 // ===== UI SUB-COMPONENTS =====
 
 function StatusPill({ status }: { status: string }) {
@@ -328,6 +372,13 @@ export function OrdersPage({
   const [editing, setEditing] = useState<ExtendedOrder | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewSrc, setPreviewSrc] = useState<string | null>(null);
+
+  const openPreview = (src: string) => {
+    setPreviewSrc(src);
+    setIsPreviewOpen(true);
+  };
   const [showInvoice, setShowInvoice] = useState<{
     show: boolean;
     order?: ExtendedOrder;
@@ -562,6 +613,7 @@ export function OrdersPage({
                   <th className="px-6 py-4">Status</th>
                   <th className="px-6 py-4 text-right">Tagihan</th>
                   <th className="px-6 py-4 text-right">Profit</th>
+                  <th className="px-6 py-4 text-center">Foto</th>
                   <th className="px-6 py-4 text-center">Aksi</th>
                 </tr>
               </thead>
@@ -604,6 +656,7 @@ export function OrdersPage({
                         setShowForm(true);
                       }}
                       onDelete={() => handleDelete(o.id)}
+                      onPreview={openPreview}
                     />
                   ))
                 )}
@@ -632,6 +685,7 @@ export function OrdersPage({
                 setShowForm(true);
               }}
               onDelete={() => handleDelete(o.id)}
+              onPreview={openPreview}
             />
           ))}
           {orders.length === 0 && (
@@ -651,6 +705,14 @@ export function OrdersPage({
           unitPrice={unitPrice}
         />
       )}
+
+      <ImagePreview
+        src={previewSrc}
+        onClose={() => {
+          setIsPreviewOpen(false);
+          setPreviewSrc(null);
+        }}
+      />
 
       {showInvoice.show && showInvoice.order && (
         <InvoiceModal
@@ -719,6 +781,7 @@ function ExpandableRow({
   onToggleSelect,
   onEdit,
   onDelete,
+  onPreview,
 }: any) {
   const d = compute(order, unitPrice);
 
@@ -770,6 +833,25 @@ function ExpandableRow({
           {formatCurrency(d.totalKeuntungan, d.currency)}
         </td>
         <td className="px-6 py-4 align-top text-center">
+          {order.imageUrl ? (
+            <button
+              onClick={() => onPreview(order.imageUrl)}
+              className="relative group/img w-10 h-10 rounded-lg overflow-hidden border border-slate-200 inline-block align-middle"
+            >
+              <img
+                src={order.imageUrl}
+                className="w-full h-full object-cover group-hover/img:scale-110 transition-transform"
+                alt=""
+              />
+              <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity">
+                <Maximize2 size={12} className="text-white" />
+              </div>
+            </button>
+          ) : (
+            <span className="text-xs text-slate-300">-</span>
+          )}
+        </td>
+        <td className="px-6 py-4 align-top text-center">
           <div className="flex justify-center items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               onClick={onEdit}
@@ -798,7 +880,7 @@ function ExpandableRow({
       {/* Expanded Details */}
       {isExpanded && (
         <tr className="bg-slate-50/50 shadow-inner">
-          <td colSpan={7} className="px-6 py-4">
+          <td colSpan={8} className="px-6 py-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-y-4 gap-x-8 text-sm pl-12 border-l-4 border-slate-200 ml-3">
               <div>
                 <span className="block text-xs text-slate-400 uppercase">
@@ -867,6 +949,7 @@ function MobileCard({
   onToggleSelect,
   onEdit,
   onDelete,
+  onPreview,
 }: any) {
   const d = compute(order, unitPrice);
   return (
@@ -893,10 +976,34 @@ function MobileCard({
         <StatusPill status={order.status} />
       </div>
 
-      <div className="py-3 border-y border-slate-50 mb-3 space-y-1">
-        <div className="text-sm text-slate-800 font-medium">
-          {order.namaBarang}
+      <div className="flex items-center gap-3 mb-3">
+        {order.imageUrl ? (
+          <button
+            onClick={() => onPreview(order.imageUrl)}
+            className="w-16 h-16 rounded-lg overflow-hidden border border-slate-200 shrink-0"
+          >
+            <img
+              src={order.imageUrl}
+              className="w-full h-full object-cover"
+              alt=""
+            />
+          </button>
+        ) : (
+          <div className="w-16 h-16 rounded-lg bg-slate-50 border border-dashed border-slate-200 flex items-center justify-center text-slate-300">
+            <IconBox />
+          </div>
+        )}
+        <div className="flex-1">
+          <div className="text-sm text-slate-800 font-bold line-clamp-2">
+            {order.namaBarang}
+          </div>
+          <div className="text-[11px] text-slate-500 mt-0.5">
+            {order.kategori} &bull; {order.jumlahKg} Kg
+          </div>
         </div>
+      </div>
+
+      <div className="py-3 border-y border-slate-50 mb-3 space-y-1">
         <div className="flex justify-between text-sm">
           <span className="text-slate-500">Total Tagihan</span>
           <span className="font-bold text-slate-900">

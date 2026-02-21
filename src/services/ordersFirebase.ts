@@ -56,6 +56,7 @@ function prepareForWrite(
     status: String(raw.status ?? "Belum Membayar"),
     catatan: raw.catatan ?? "",
     tipeNominal: raw.tipeNominal ?? "IDR",
+    imageUrl: raw.imageUrl ?? "",
     updatedAt: serverTimestamp(),
     // createdAt di-set saat create
   };
@@ -161,11 +162,11 @@ export function subscribeOrders(
 export async function getOrdersPage(pageSize = 25, cursor?: any) {
   const q1 = cursor
     ? query(
-        ORDERS,
-        orderBy("tanggal", "desc"),
-        startAfter(cursor),
-        qLimit(pageSize),
-      )
+      ORDERS,
+      orderBy("tanggal", "desc"),
+      startAfter(cursor),
+      qLimit(pageSize),
+    )
     : query(ORDERS, orderBy("tanggal", "desc"), qLimit(pageSize));
 
   const snap = await getDocs(q1);
@@ -214,6 +215,7 @@ export function fromExtended(ui: ExtendedOrder): OrderDoc {
     status: ui.status as OrderStatus,
     catatan: ui.catatan,
     tipeNominal: ui.tipeNominal,
+    imageUrl: ui.imageUrl,
   };
 }
 

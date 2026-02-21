@@ -19,6 +19,7 @@ export interface Order {
   totalHarga?: number;
   status?: OrderStatus;
   tipeNominal?: string;
+  imageUrl?: string;
 }
 
 export type Customer = {
@@ -69,6 +70,7 @@ export type OrderDoc = {
   status: OrderStatus; // 'Belum Membayar' | 'Pembayaran Selesai' | ...
   tipeNominal?: string;
   catatan?: string;
+  imageUrl?: string;
   createdAt?: any;
   updatedAt?: any;
 };
@@ -94,6 +96,7 @@ export type PurchaseItem = {
   note?: string;
   shippingDate: string;
   isDone: boolean;
+  imageUrl?: string;
 };
 
 export type ShareConfig = {
