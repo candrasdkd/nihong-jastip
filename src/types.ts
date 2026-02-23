@@ -97,6 +97,9 @@ export type PurchaseItem = {
   shippingDate: string;
   isDone: boolean;
   imageUrl?: string;
+  usageType?: "checking" | "pricing";
+  originalPrice?: number;
+  jastipPrice?: number;
 };
 
 export type PurchaseCustomer = {
