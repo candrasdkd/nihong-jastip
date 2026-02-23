@@ -99,6 +99,12 @@ export type PurchaseItem = {
   imageUrl?: string;
 };
 
+export type PurchaseCustomer = {
+  id?: string;
+  nama: string;
+  createdAt?: any;
+};
+
 export type ShareConfig = {
   date: string;
   pic: string;

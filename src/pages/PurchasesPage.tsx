@@ -42,10 +42,12 @@ import {
 } from "lucide-react";
 import { formatAndAddYear } from "../utils/helpers";
 import { compressImage } from "../utils/image";
+import SearchableSelect from "../components/ui/SearchableSelect";
 
 // --- TYPES ---
 import { PIC_OPTIONS, PLATFORM_OPTIONS } from "../utils/constants";
-import { PurchaseItem, ShareConfig } from "../types";
+import { PurchaseItem, ShareConfig, PurchaseCustomer } from "../types";
+import { listenPurchaseCustomers, addPurchaseCustomer } from "../services/purchaseCustomersFirebase";
 
 // --- SUB-COMPONENTS ---
 
@@ -129,11 +131,50 @@ export default function PurchasesPage() {
     pic: "",
     status: "all",
   });
+  const [shareMessage, setShareMessage] = useState("");
+
+  const [customers, setCustomers] = useState<PurchaseCustomer[]>([]);
 
   const nameInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isUploading, setIsUploading] = useState(false);
+
+  useEffect(() => {
+    const unsub = listenPurchaseCustomers((rows) => setCustomers(rows));
+    return () => unsub();
+  }, []);
+
+  const customerOptions = useMemo(() => {
+    return customers.map((c) => ({
+      label: c.nama,
+      value: c.nama,
+    }));
+  }, [customers]);
+
+  const handleAddNewCustomer = async () => {
+    const name = prompt("Masukkan nama customer baru untuk pembelian:");
+    if (!name) return;
+
+    // Check if already exists
+    if (customers.some(c => c.nama.toLowerCase() === name.trim().toLowerCase())) {
+      alert("Customer suda ada di daftar.");
+      setForm(prev => ({ ...prev, customer: name.trim() }));
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      await addPurchaseCustomer(name.trim());
+      setForm(prev => ({ ...prev, customer: name.trim() }));
+    } catch (e) {
+      console.error(e);
+      alert("Gagal menambah customer.");
+    } finally {
+      setIsProcessing(true);
+      setTimeout(() => setIsProcessing(false), 500);
+    }
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -375,9 +416,15 @@ export default function PurchasesPage() {
     return text;
   };
 
+  useEffect(() => {
+    if (isShareOpen) {
+      setShareMessage(generateShareText());
+    }
+  }, [isShareOpen, shareConfig, items]);
+
   const handleSendWhatsapp = () => {
     window.open(
-      `https://api.whatsapp.com/send?text=${encodeURIComponent(generateShareText())}`,
+      `https://api.whatsapp.com/send?text=${encodeURIComponent(shareMessage)}`,
       "_blank",
     );
     setIsShareOpen(false);
@@ -638,8 +685,8 @@ export default function PurchasesPage() {
                                             >
                                               {item.name}
                                             </h5>
-                                            {/* Actions Overlay */}
-                                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 top-2 bg-white/90 shadow-sm rounded-lg p-1 border border-slate-100">
+                                            {/* Actions Overlay - Visible on mobile, hover on desktop */}
+                                            <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity absolute right-2 top-2 bg-white/90 shadow-sm rounded-lg p-1 border border-slate-100">
                                               {item.link && (
                                                 <button
                                                   onClick={() =>
@@ -802,7 +849,7 @@ export default function PurchasesPage() {
               <div className="flex flex-1 min-h-0 flex-col sm:flex-row relative bg-slate-50">
                 {/* --- KIRI: FORM INPUT --- */}
                 <div
-                  className={`flex-1 flex flex-col relative h-full ${!editing && activeTab === "draft" ? "hidden sm:flex" : "flex"}`}
+                  className={`flex-1 flex flex-col relative h-full ${editing ? "flex" : (activeTab === "draft" ? "hidden sm:flex" : "flex")}`}
                 >
                   {/* Scrollable Container */}
                   <div className="flex-1 overflow-y-auto custom-scrollbar p-5 pb-32 sm:pb-28">
@@ -840,16 +887,23 @@ export default function PurchasesPage() {
                             />
                           </div>
                           <div className="space-y-1">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
-                              Customer
-                            </label>
-                            <input
-                              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-bold text-sm outline-none focus:ring-2 focus:ring-orange-100"
-                              placeholder="Nama..."
+                            <div className="flex justify-between items-center mb-1">
+                              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
+                                Customer
+                              </label>
+                              <button
+                                onClick={handleAddNewCustomer}
+                                className="text-[10px] font-bold text-orange-500 hover:text-orange-600 flex items-center gap-0.5"
+                              >
+                                <Plus size={10} strokeWidth={3} />
+                                BARU
+                              </button>
+                            </div>
+                            <SearchableSelect
+                              placeholder="Cari Customer..."
                               value={form.customer}
-                              onChange={(e) =>
-                                setForm({ ...form, customer: e.target.value })
-                              }
+                              onChange={(val) => setForm({ ...form, customer: val })}
+                              options={customerOptions}
                             />
                           </div>
                         </div>
@@ -1012,8 +1066,21 @@ export default function PurchasesPage() {
                   </div>
 
                   {/* BUTTON ACTION (FIXED BOTTOM) */}
-                  {!editing && (
-                    <div className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-200 z-20 shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
+                  <div className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-200 z-20 shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
+                    {editing ? (
+                      <button
+                        onClick={handleSaveAll}
+                        disabled={isProcessing}
+                        className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white h-12 rounded-xl font-black flex items-center justify-center gap-2 shadow-lg shadow-orange-200 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale"
+                      >
+                        {isProcessing ? (
+                          <Loader2 size={20} className="animate-spin" />
+                        ) : (
+                          <Send size={20} />
+                        )}
+                        SIMPAN PERUBAHAN
+                      </button>
+                    ) : (
                       <button
                         onClick={addToDraft}
                         disabled={
@@ -1029,13 +1096,13 @@ export default function PurchasesPage() {
                           TAMBAH KE ANTRIAN
                         </span>
                       </button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
 
                 {/* --- KANAN: DRAFT LIST --- */}
                 <div
-                  className={`flex-1 flex flex-col h-full bg-slate-100 sm:border-l border-slate-200 relative ${!editing && activeTab === "input" ? "hidden sm:flex" : "flex"}`}
+                  className={`flex-1 flex flex-col h-full bg-slate-100 sm:border-l border-slate-200 relative ${editing ? "hidden sm:flex" : (activeTab === "input" ? "hidden sm:flex" : "flex")}`}
                 >
                   {/* Header Draft */}
                   <div className="p-4 bg-white/50 border-b border-slate-200 flex justify-between items-center sticky top-0 z-10">
@@ -1109,25 +1176,25 @@ export default function PurchasesPage() {
                     )}
                   </div>
 
-                  {/* BUTTON SIMPAN (FIXED BOTTOM) */}
-                  <div className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-200 z-20 shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
-                    <button
-                      onClick={handleSaveAll}
-                      disabled={
-                        isProcessing || (drafts.length === 0 && !editing)
-                      }
-                      className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white h-12 rounded-xl font-black flex items-center justify-center gap-2 shadow-lg shadow-orange-200 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale"
-                    >
-                      {isProcessing ? (
-                        <Loader2 size={20} className="animate-spin" />
-                      ) : (
-                        <Send size={20} />
-                      )}
-                      {editing
-                        ? "SIMPAN PERUBAHAN"
-                        : `SIMPAN SEMUA (${drafts.length})`}
-                    </button>
-                  </div>
+                  {/* BUTTON SIMPAN (FIXED BOTTOM) - Only for Drafts Save */}
+                  {!editing && (
+                    <div className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-200 z-20 shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
+                      <button
+                        onClick={handleSaveAll}
+                        disabled={
+                          isProcessing || drafts.length === 0
+                        }
+                        className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white h-12 rounded-xl font-black flex items-center justify-center gap-2 shadow-lg shadow-orange-200 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale"
+                      >
+                        {isProcessing ? (
+                          <Loader2 size={20} className="animate-spin" />
+                        ) : (
+                          <Send size={20} />
+                        )}
+                        SIMPAN SEMUA ({drafts.length})
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -1210,9 +1277,11 @@ export default function PurchasesPage() {
                   <div className="absolute top-0 right-0 bg-green-500 text-white text-[9px] font-bold px-2 py-1 rounded-bl-lg z-10">
                     WHATSAPP PREVIEW
                   </div>
-                  <pre className="text-[10px] text-slate-300 font-mono whitespace-pre-wrap max-h-48 overflow-y-auto custom-scrollbar">
-                    {generateShareText()}
-                  </pre>
+                  <textarea
+                    className="w-full bg-transparent text-[10px] text-slate-300 font-mono whitespace-pre-wrap min-h-48 overflow-y-auto custom-scrollbar border-none focus:ring-0 resize-none outline-none"
+                    value={shareMessage}
+                    onChange={(e) => setShareMessage(e.target.value)}
+                  />
                 </div>
               </div>
 
