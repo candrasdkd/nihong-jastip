@@ -86,7 +86,7 @@ function StatCard({
       </div>
       <div className="pl-2 flex items-end justify-between">
         <div>
-          <h3 className="text-2xl font-bold text-slate-800 tracking-tight leading-tight">{value}</h3>
+          <h3 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight leading-tight">{value}</h3>
           {sub && <p className="text-xs text-slate-400 mt-1">{sub}</p>}
         </div>
         <div className={`p-2.5 rounded-xl bg-slate-50 text-slate-400`}>
