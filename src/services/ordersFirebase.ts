@@ -205,7 +205,7 @@ export function fromExtended(ui: ExtendedOrder): OrderDoc {
     kategori: ui.kategori,
     pengiriman: ui.pengiriman,
     jumlahKg: ui.jumlahKg,
-    kgCeil: ui.kgCeil ?? Math.ceil(Number(ui.jumlahKg ?? 0)),
+    kgCeil: ui.kgCeil ?? (Math.ceil(Number(ui.jumlahKg ?? 0) * 2) / 2),
     hargaJastip: ui.hargaJastip,
     hargaJastipMarkup: ui.hargaJastipMarkup,
     hargaOngkir: ui.hargaOngkir,

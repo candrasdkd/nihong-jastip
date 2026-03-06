@@ -23,7 +23,7 @@ import {
 } from "../utils/helpers";
 import { ORDER_STATUSES } from "../utils/constants";
 import { AnimatePresence, motion } from "framer-motion";
-import { X, Maximize2 } from "lucide-react";
+import { X, Maximize2, ChevronLeft, ChevronRight } from "lucide-react";
 
 // ===== ICONS =====
 const IconPlus = (p: React.SVGProps<SVGSVGElement>) => (
@@ -222,42 +222,94 @@ function ImagePreview({
   src,
   onClose,
 }: {
-  src: string | null;
+  src: string | string[] | null;
   onClose: () => void;
 }) {
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    setIndex(0);
+  }, [src]);
+
+  // Close on ESC key
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+
   if (!src) return null;
+  const images = Array.isArray(src) ? src : [src];
+  if (images.length === 0) return null;
+
+  const currentSrc = images[index];
+
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+      {/* Overlay backdrop */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md"
+      />
+
+      {/* Content wrapper */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        transition={{ duration: 0.2 }}
+        className="fixed inset-0 z-[101] flex flex-col items-center justify-center p-4 sm:p-6 pointer-events-none"
+      >
+        {/* Close button */}
+        <button
           onClick={onClose}
-          className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm"
-        />
-        <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.9, opacity: 0 }}
-          className="relative max-w-4xl max-h-[90vh] z-10"
+          className="pointer-events-auto absolute top-3 right-3 sm:top-4 sm:right-4 bg-white/10 hover:bg-white/20 text-white p-2 sm:p-2.5 rounded-full transition-colors z-20 backdrop-blur-sm"
         >
-          <button
-            onClick={onClose}
-            className="absolute -top-4 -right-4 bg-white text-slate-900 p-2 rounded-full shadow-xl hover:bg-slate-100 transition-colors z-20"
-          >
-            <X size={20} />
-          </button>
-          <img
-            src={src}
-            alt="Preview"
-            className="w-full h-full object-contain rounded-2xl shadow-2xl border-4 border-white/10"
-          />
-        </motion.div>
-      </div>
+          <X size={18} />
+        </button>
+
+        {/* Image */}
+        <img
+          src={currentSrc}
+          alt="Preview"
+          onClick={(e) => e.stopPropagation()}
+          className="pointer-events-auto max-w-full max-h-[80vh] sm:max-h-[85vh] w-auto h-auto object-contain rounded-xl sm:rounded-2xl shadow-2xl"
+        />
+
+        {/* Navigation */}
+        {images.length > 1 && (
+          <div className="pointer-events-auto flex items-center gap-4 mt-4">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIndex((i) => (i - 1 + images.length) % images.length);
+              }}
+              className="bg-white/10 hover:bg-white/20 text-white p-2.5 rounded-full transition-all backdrop-blur-sm"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <span className="text-white/80 text-sm font-semibold bg-white/10 px-3 py-1 rounded-full backdrop-blur-sm">
+              {index + 1} / {images.length}
+            </span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIndex((i) => (i + 1) % images.length);
+              }}
+              className="bg-white/10 hover:bg-white/20 text-white p-2.5 rounded-full transition-all backdrop-blur-sm"
+            >
+              <ChevronRight size={20} />
+            </button>
+          </div>
+        )}
+      </motion.div>
     </AnimatePresence>
   );
 }
+
 
 // ===== UI SUB-COMPONENTS =====
 
@@ -373,9 +425,10 @@ export function OrdersPage({
   const [showForm, setShowForm] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const [previewSrc, setPreviewSrc] = useState<string | null>(null);
+  const [previewSrc, setPreviewSrc] = useState<string | string[] | null>(null);
 
-  const openPreview = (src: string) => {
+  const openPreview = (src: string | string[]) => {
+    if (!src || (Array.isArray(src) && src.length === 0)) return;
     setPreviewSrc(src);
     setIsPreviewOpen(true);
   };
@@ -706,13 +759,15 @@ export function OrdersPage({
         />
       )}
 
-      <ImagePreview
-        src={previewSrc}
-        onClose={() => {
-          setIsPreviewOpen(false);
-          setPreviewSrc(null);
-        }}
-      />
+      {isPreviewOpen && (
+        <ImagePreview
+          src={previewSrc}
+          onClose={() => {
+            setIsPreviewOpen(false);
+            setPreviewSrc(null);
+          }}
+        />
+      )}
 
       {showInvoice.show && showInvoice.order && (
         <InvoiceModal
@@ -833,18 +888,23 @@ function ExpandableRow({
           {formatCurrency(d.totalKeuntungan, d.currency)}
         </td>
         <td className="px-6 py-4 align-top text-center">
-          {order.imageUrl ? (
+          {order.imageUrl && (!Array.isArray(order.imageUrl) || order.imageUrl.length > 0) ? (
             <button
-              onClick={() => onPreview(order.imageUrl)}
+              onClick={() => onPreview(order.imageUrl!)}
               className="relative group/img w-10 h-10 rounded-lg overflow-hidden border border-slate-200 inline-block align-middle"
             >
               <img
-                src={order.imageUrl}
+                src={Array.isArray(order.imageUrl) ? order.imageUrl[0] : order.imageUrl}
                 className="w-full h-full object-cover group-hover/img:scale-110 transition-transform"
                 alt=""
               />
               <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity">
                 <Maximize2 size={12} className="text-white" />
+                {Array.isArray(order.imageUrl) && order.imageUrl.length > 1 && (
+                  <span className="absolute bottom-0 right-0 bg-black/60 text-white text-[8px] px-1 rounded-tl-md">
+                    +{order.imageUrl.length - 1}
+                  </span>
+                )}
               </div>
             </button>
           ) : (
@@ -977,16 +1037,21 @@ function MobileCard({
       </div>
 
       <div className="flex items-center gap-3 mb-3">
-        {order.imageUrl ? (
+        {order.imageUrl && (!Array.isArray(order.imageUrl) || order.imageUrl.length > 0) ? (
           <button
-            onClick={() => onPreview(order.imageUrl)}
-            className="w-16 h-16 rounded-lg overflow-hidden border border-slate-200 shrink-0"
+            onClick={() => onPreview(order.imageUrl!)}
+            className="w-16 h-16 rounded-lg overflow-hidden border border-slate-200 shrink-0 relative"
           >
             <img
-              src={order.imageUrl}
+              src={Array.isArray(order.imageUrl) ? order.imageUrl[0] : order.imageUrl}
               className="w-full h-full object-cover"
               alt=""
             />
+            {Array.isArray(order.imageUrl) && order.imageUrl.length > 1 && (
+              <span className="absolute bottom-0 right-0 bg-black/60 text-white text-[10px] px-1.5 rounded-tl-lg font-bold">
+                {order.imageUrl.length}
+              </span>
+            )}
           </button>
         ) : (
           <div className="w-16 h-16 rounded-lg bg-slate-50 border border-dashed border-slate-200 flex items-center justify-center text-slate-300">

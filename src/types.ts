@@ -19,7 +19,7 @@ export interface Order {
   totalHarga?: number;
   status?: OrderStatus;
   tipeNominal?: string;
-  imageUrl?: string;
+  imageUrl?: string | string[];
 }
 
 export type Customer = {

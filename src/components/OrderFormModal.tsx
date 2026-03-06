@@ -54,7 +54,13 @@ export function OrderFormModal({
   const [status, setStatus] = useState<string>(
     (initial?.status as any) || "Belum Membayar"
   );
-  const [imageUrl, setImageUrl] = useState<string>((initial as any)?.imageUrl || "");
+  const [imageUrls, setImageUrls] = useState<string[]>(
+    Array.isArray((initial as any)?.imageUrl)
+      ? (initial as any).imageUrl
+      : (initial as any)?.imageUrl
+        ? [(initial as any).imageUrl]
+        : []
+  );
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -74,7 +80,7 @@ export function OrderFormModal({
 
   // Memoized Calculations
   const baseOngkir = useMemo(() => Number(hargaOngkir) || 0, [hargaOngkir]);
-  const ceilKg = useMemo(() => Math.ceil(Number(jumlahKg || 0)), [jumlahKg]);
+  const ceilKg = useMemo(() => Math.ceil(Number(jumlahKg || 0) * 2) / 2, [jumlahKg]);
 
   const totalPembayaran = useMemo(
     () => (Number(hargaJastipMarkup) || 0) + (Number(hargaOngkirMarkup) || 0),
@@ -128,7 +134,7 @@ export function OrderFormModal({
       );
       const data = await res.json();
       if (data.secure_url) {
-        setImageUrl(data.secure_url);
+        setImageUrls((prev) => [...prev, data.secure_url]);
       } else if (data.error) {
         alert(`Cloudinary Error: ${data.error.message}`);
       }
@@ -171,7 +177,7 @@ export function OrderFormModal({
         totalPembayaran,
         kgCeil: ceilKg,
         tipeNominal: currency,
-        imageUrl: imageUrl || "",
+        imageUrl: imageUrls,
         _computed: { unitPriceAtSave: unitPrice },
       };
       await Promise.resolve(onSubmit(payload as Order));
@@ -253,14 +259,19 @@ export function OrderFormModal({
                   disabled={loading}
                 />
               </div>
-              <Input
-                label="Berat (Kg)"
-                type="number"
-                step="0.01"
-                value={toStr(jumlahKg)}
-                onChange={(e) => setJumlahKg(num(e.target.value))}
-                required
-              />
+              <div className="relative">
+                <Input
+                  label="Berat (Kg)"
+                  type="number"
+                  step="0.01"
+                  value={toStr(jumlahKg)}
+                  onChange={(e) => setJumlahKg(num(e.target.value))}
+                  required
+                />
+                <div className="absolute right-0 top-0 text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-md font-bold mt-1.5 mr-2 border border-blue-100 italic">
+                  Dibulatkan: {ceilKg} kg
+                </div>
+              </div>
               <Input
                 label="Lokasi Pengiriman"
                 value={pengiriman}
@@ -340,20 +351,24 @@ export function OrderFormModal({
 
             <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block mb-1 text-sm text-neutral-600">Foto Produk</label>
-                <div className="flex items-center gap-4 p-3 border rounded-xl bg-white">
-                  {imageUrl ? (
-                    <div className="relative w-16 h-16 rounded-lg overflow-hidden border">
-                      <img src={imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                <label className="block mb-1 text-sm text-neutral-600">
+                  Foto Produk ({imageUrls.length}/3)
+                </label>
+                <div className="flex flex-wrap items-center gap-4 p-3 border rounded-xl bg-white min-h-[88px]">
+                  {imageUrls.map((url, idx) => (
+                    <div key={idx} className="relative w-16 h-16 rounded-lg overflow-hidden border shadow-sm">
+                      <img src={url} alt={`Preview ${idx + 1}`} className="w-full h-full object-cover" />
                       <button
                         type="button"
-                        onClick={() => setImageUrl("")}
-                        className="absolute top-0.5 right-0.5 bg-white/80 p-0.5 rounded-full text-red-500 shadow-sm"
+                        onClick={() => setImageUrls((prev) => prev.filter((_, i) => i !== idx))}
+                        className="absolute top-0.5 right-0.5 bg-white/80 p-0.5 rounded-full text-red-500 shadow-sm hover:bg-red-50"
                       >
                         <X size={10} />
                       </button>
                     </div>
-                  ) : (
+                  ))}
+
+                  {imageUrls.length < 3 && (
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
@@ -370,16 +385,21 @@ export function OrderFormModal({
                       )}
                     </button>
                   )}
+
+                  {imageUrls.length === 0 && !isUploading && (
+                    <div className="flex-1">
+                      <p className="text-[10px] text-neutral-400">Opsional: Maksimal 3 foto produk.</p>
+                    </div>
+                  )}
+
                   <input
                     type="file"
                     ref={fileInputRef}
                     className="hidden"
                     accept="image/*"
                     onChange={handleFileUpload}
+                    onClick={(e) => { (e.target as HTMLInputElement).value = ""; }}
                   />
-                  <div className="flex-1">
-                    <p className="text-[10px] text-neutral-400">Opsional: Tambahkan foto produk.</p>
-                  </div>
                 </div>
               </div>
               <div>
