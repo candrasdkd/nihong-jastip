@@ -185,7 +185,7 @@ const InvoicePaper = React.forwardRef(
                   Berat (Kg)
                 </th>
                 <th className="py-3 text-right font-bold text-slate-900 uppercase tracking-wider text-xs">
-                  Total (IDR)
+                  Total ({totals.currency})
                 </th>
               </tr>
             </thead>
@@ -211,9 +211,7 @@ const InvoicePaper = React.forwardRef(
                       {d.kg}
                     </td>
                     <td className="py-3 text-right font-mono font-bold text-slate-900 align-top">
-                      {formatCurrency(d.lineTotal, d.currency)
-                        .replace("IDR", "")
-                        .trim()}
+                      {formatCurrency(d.lineTotal, d.currency)}
                     </td>
                   </tr>
                 );
@@ -358,11 +356,12 @@ export function InvoiceModal({
         if (!acc.currency) acc.currency = d.currency;
         return acc;
       },
-      { subtotal: 0, currency: "IDR" },
+      { subtotal: 0, currency: "" },
     );
   }, [items, unitPrice]);
 
   const grandTotal = totals.subtotal;
+  const displayCurrency = totals.currency || "IDR";
   const badge = getStatusBadge(String(order.status));
 
   // --- FUNGSI DOWNLOAD BARU (TARGET GHOST ELEMENT) ---
@@ -419,7 +418,7 @@ export function InvoiceModal({
     order,
     items,
     customer,
-    totals,
+    totals: { ...totals, currency: displayCurrency },
     grandTotal,
     badge,
     unitPrice,
