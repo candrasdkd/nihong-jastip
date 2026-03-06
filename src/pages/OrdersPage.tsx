@@ -23,207 +23,23 @@ import {
 } from "../utils/helpers";
 import { ORDER_STATUSES } from "../utils/constants";
 import { AnimatePresence, motion } from "framer-motion";
-import { X, Maximize2, ChevronLeft, ChevronRight } from "lucide-react";
-
-// ===== ICONS =====
-const IconPlus = (p: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="20"
-    height="20"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...p}
-  >
-    <path d="M5 12h14" />
-    <path d="M12 5v14" />
-  </svg>
-);
-const IconFilter = (p: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="18"
-    height="18"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...p}
-  >
-    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-  </svg>
-);
-const IconInvoice = (p: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="18"
-    height="18"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...p}
-  >
-    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-    <polyline points="14 2 14 8 20 8" />
-    <line x1="16" y1="13" x2="8" y2="13" />
-    <line x1="16" y1="17" x2="8" y2="17" />
-    <line x1="10" y1="9" x2="8" y2="9" />
-  </svg>
-);
-const IconChevronDown = (p: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...p}
-  >
-    <path d="m6 9 6 6 6-6" />
-  </svg>
-);
-const IconSearch = (p: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="18"
-    height="18"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...p}
-  >
-    <circle cx="11" cy="11" r="8" />
-    <path d="m21 21-4.3-4.3" />
-  </svg>
-);
-const IconBox = (p: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="20"
-    height="20"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...p}
-  >
-    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-    <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-    <line x1="12" y1="22.08" x2="12" y2="12" />
-  </svg>
-);
-const IconTrash = (p: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...p}
-  >
-    <path d="M3 6h18" />
-    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-  </svg>
-);
-const IconEdit = (p: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...p}
-  >
-    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
-  </svg>
-);
-const IconX = (p: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...p}
-  >
-    <line x1="18" y1="6" x2="6" y2="18"></line>
-    <line x1="6" y1="6" x2="18" y2="18"></line>
-  </svg>
-);
-const IconAlertCircle = (p: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="20"
-    height="20"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...p}
-  >
-    <circle cx="12" cy="12" r="10"></circle>
-    <line x1="12" y1="8" x2="12" y2="12"></line>
-    <line x1="12" y1="16" x2="12.01" y2="16"></line>
-  </svg>
-);
-const IconCheckCircle = (p: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="20"
-    height="20"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...p}
-  >
-    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-    <polyline points="22 4 12 14.01 9 11.01"></polyline>
-  </svg>
-);
+import {
+  X, Maximize2, ChevronLeft, ChevronRight, MessageCircle,
+  Plus, Filter, FileText, ChevronDown, Search, Box, Trash2, Pencil,
+  AlertCircle, CheckCircle2,
+} from "lucide-react";
 
 // ===== IMAGE PREVIEW MODAL =====
 function ImagePreview({
   src,
   onClose,
+  phone,
+  customerName,
 }: {
   src: string | string[] | null;
   onClose: () => void;
+  phone?: string;
+  customerName?: string;
 }) {
   const [index, setIndex] = useState(0);
 
@@ -243,6 +59,40 @@ function ImagePreview({
   if (images.length === 0) return null;
 
   const currentSrc = images[index];
+
+  const handleShareWA = (e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    // Validate & clean phone number
+    const cleanPhone = phone ? phone.replace(/\D/g, "").replace(/^0/, "62") : "";
+    const isValidPhone = cleanPhone.length >= 9;
+
+    if (phone && !isValidPhone) {
+      alert(`Nomor telepon "${phone}" tidak valid. Pastikan nomor HP customer sudah benar di data pelanggan.`);
+      return;
+    }
+
+    // Build friendly message
+    const firstName = customerName?.split(" ")[0] || "Kak";
+    let text = `Halo ${firstName} 👋\n\n`;
+
+    if (images.length > 1) {
+      text += `Berikut foto produk pesanan kamu dari *Nihong Jastip* 📦\n\n`;
+      images.forEach((url, i) => {
+        text += `Foto ${i + 1}: ${url}\n`;
+      });
+    } else {
+      text += `Berikut foto produk pesanan kamu dari *Nihong Jastip* 📦\n\n${currentSrc}\n`;
+    }
+
+    text += `\nTerima kasih sudah order ya! Kalau ada pertanyaan, feel free tanya kami 😊🙏`;
+
+    const wa = isValidPhone
+      ? `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(text)}`
+      : `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+
+    window.open(wa, "_blank", "noopener,noreferrer");
+  };
 
   return (
     <AnimatePresence>
@@ -276,17 +126,14 @@ function ImagePreview({
           src={currentSrc}
           alt="Preview"
           onClick={(e) => e.stopPropagation()}
-          className="pointer-events-auto max-w-full max-h-[80vh] sm:max-h-[85vh] w-auto h-auto object-contain rounded-xl sm:rounded-2xl shadow-2xl"
+          className="pointer-events-auto max-w-full max-h-[75vh] sm:max-h-[80vh] w-auto h-auto object-contain rounded-xl sm:rounded-2xl shadow-2xl"
         />
 
         {/* Navigation */}
         {images.length > 1 && (
           <div className="pointer-events-auto flex items-center gap-4 mt-4">
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setIndex((i) => (i - 1 + images.length) % images.length);
-              }}
+              onClick={(e) => { e.stopPropagation(); setIndex((i) => (i - 1 + images.length) % images.length); }}
               className="bg-white/10 hover:bg-white/20 text-white p-2.5 rounded-full transition-all backdrop-blur-sm"
             >
               <ChevronLeft size={20} />
@@ -295,16 +142,29 @@ function ImagePreview({
               {index + 1} / {images.length}
             </span>
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setIndex((i) => (i + 1) % images.length);
-              }}
+              onClick={(e) => { e.stopPropagation(); setIndex((i) => (i + 1) % images.length); }}
               className="bg-white/10 hover:bg-white/20 text-white p-2.5 rounded-full transition-all backdrop-blur-sm"
             >
               <ChevronRight size={20} />
             </button>
           </div>
         )}
+
+        {/* Bottom action bar */}
+        <div className="pointer-events-auto flex flex-col items-center gap-2 mt-4">
+          <button
+            onClick={handleShareWA}
+            className="flex items-center gap-2 bg-[#25D366] hover:bg-[#128C7E] text-white px-5 py-2.5 rounded-full text-sm font-bold transition-colors shadow-lg"
+          >
+            <MessageCircle size={16} />
+            {images.length > 1 ? `Kirim ${images.length} Foto ke ${customerName?.split(" ")[0] || "Customer"}` : `Kirim ke ${customerName?.split(" ")[0] || "Customer"}`}
+          </button>
+          {phone && (
+            <span className="text-white/40 text-[10px]">
+              {phone}
+            </span>
+          )}
+        </div>
       </motion.div>
     </AnimatePresence>
   );
@@ -375,16 +235,16 @@ function ToastContainer({
           `}
         >
           {toast.type === "error" ? (
-            <IconAlertCircle className="w-5 h-5 shrink-0" />
+            <AlertCircle className="w-5 h-5 shrink-0" />
           ) : (
-            <IconCheckCircle className="w-5 h-5 shrink-0" />
+            <CheckCircle2 className="w-5 h-5 shrink-0" />
           )}
           <span className="text-sm font-medium">{toast.message}</span>
           <button
             onClick={() => removeToast(toast.id)}
             className={`ml-4 p-1 rounded-full hover:bg-black/10 transition-colors`}
           >
-            <IconX className="w-4 h-4" />
+            <X size={16} />
           </button>
         </div>
       ))}
@@ -426,10 +286,14 @@ export function OrdersPage({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewSrc, setPreviewSrc] = useState<string | string[] | null>(null);
+  const [previewPhone, setPreviewPhone] = useState<string | undefined>(undefined);
+  const [previewCustomerName, setPreviewCustomerName] = useState<string | undefined>(undefined);
 
-  const openPreview = (src: string | string[]) => {
+  const openPreview = (src: string | string[], phone?: string, customerName?: string) => {
     if (!src || (Array.isArray(src) && src.length === 0)) return;
     setPreviewSrc(src);
+    setPreviewPhone(phone);
+    setPreviewCustomerName(customerName);
     setIsPreviewOpen(true);
   };
   const [showInvoice, setShowInvoice] = useState<{
@@ -585,7 +449,7 @@ export function OrdersPage({
                 }}
                 className="hidden sm:flex bg-slate-900 hover:bg-slate-800 text-white shadow-md shadow-slate-900/10"
               >
-                <IconPlus className="w-4 h-4 mr-2" /> Buat Pesanan
+                <Plus className="w-4 h-4 mr-2" /> Buat Pesanan
               </Button>
             </div>
           </div>
@@ -597,7 +461,7 @@ export function OrdersPage({
         <div className="flex flex-col sm:flex-row gap-4 justify-between items-end sm:items-center bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
           <div className="relative w-full sm:w-96">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-              <IconSearch />
+              <Search size={18} />
             </div>
             <Input
               placeholder="Cari pelanggan, no resi, barang..."
@@ -613,7 +477,7 @@ export function OrdersPage({
               onClick={() => setShowFilterModal(true)}
               className={`whitespace-nowrap ${filterCount > 0 ? "bg-blue-50 border-blue-200 text-blue-700" : "text-slate-600"}`}
             >
-              <IconFilter className="w-4 h-4 mr-2" /> Filter
+              <Filter className="w-4 h-4 mr-2" /> Filter
               {filterCount > 0 && (
                 <span className="ml-2 bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded-full">
                   {filterCount}
@@ -633,7 +497,7 @@ export function OrdersPage({
                   variant="outline"
                   className="border-slate-300 text-slate-700 hover:bg-slate-50"
                 >
-                  <IconInvoice className="w-4 h-4 mr-2" /> Invoice
+                  <FileText className="w-4 h-4 mr-2" /> Invoice
                 </Button>
               </div>
             )}
@@ -676,7 +540,7 @@ export function OrdersPage({
                     <td colSpan={7} className="px-6 py-12 text-center">
                       <div className="flex flex-col items-center justify-center text-slate-400">
                         <div className="bg-slate-50 p-4 rounded-full mb-3">
-                          <IconBox className="w-8 h-8 opacity-50" />
+                          <Box className="w-8 h-8 opacity-50" />
                         </div>
                         <p>Tidak ada pesanan ditemukan.</p>
                       </div>
@@ -709,7 +573,10 @@ export function OrdersPage({
                         setShowForm(true);
                       }}
                       onDelete={() => handleDelete(o.id)}
-                      onPreview={openPreview}
+                      onPreview={(src: string | string[]) => {
+                        const cust = customers.find(c => c.nama === o.namaPelanggan);
+                        openPreview(src, cust?.telpon, o.namaPelanggan);
+                      }}
                     />
                   ))
                 )}
@@ -738,7 +605,10 @@ export function OrdersPage({
                 setShowForm(true);
               }}
               onDelete={() => handleDelete(o.id)}
-              onPreview={openPreview}
+              onPreview={(src: string | string[]) => {
+                const cust = customers.find(c => c.nama === o.namaPelanggan);
+                openPreview(src, cust?.telpon, o.namaPelanggan);
+              }}
             />
           ))}
           {orders.length === 0 && (
@@ -762,9 +632,13 @@ export function OrdersPage({
       {isPreviewOpen && (
         <ImagePreview
           src={previewSrc}
+          phone={previewPhone}
+          customerName={previewCustomerName}
           onClose={() => {
             setIsPreviewOpen(false);
             setPreviewSrc(null);
+            setPreviewPhone(undefined);
+            setPreviewCustomerName(undefined);
           }}
         />
       )}
@@ -804,7 +678,7 @@ export function OrdersPage({
           onClick={handleInvoiceClick}
           className="sm:hidden fixed bottom-36 right-6 z-40 h-12 px-5 bg-white text-slate-800 border border-slate-200 rounded-full shadow-xl shadow-slate-200/50 flex items-center gap-2 active:scale-95 transition-all animate-in slide-in-from-bottom-5 duration-200"
         >
-          <IconInvoice className="w-5 h-5 text-blue-600" />
+          <FileText className="w-5 h-5 text-blue-600" />
           <span className="font-bold text-sm">
             Invoice ({selectedIds.length})
           </span>
@@ -819,7 +693,7 @@ export function OrdersPage({
         }}
         className="sm:hidden fixed bottom-20 right-6 h-14 w-14 bg-slate-900 text-white rounded-full shadow-xl shadow-slate-900/30 flex items-center justify-center active:scale-95 transition-transform z-40"
       >
-        <IconPlus className="w-6 h-6" />
+        <Plus className="w-6 h-6" />
       </button>
     </div>
   );
@@ -918,20 +792,20 @@ function ExpandableRow({
               className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
               title="Edit"
             >
-              <IconEdit />
+              <Pencil size={16} />
             </button>
             <button
               onClick={onDelete}
               className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
               title="Hapus"
             >
-              <IconTrash />
+              <Trash2 size={16} />
             </button>
             <button
               onClick={onToggleExpand}
               className={`p-1.5 text-slate-400 hover:text-slate-700 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
             >
-              <IconChevronDown />
+              <ChevronDown size={16} className={`p-1.5 text-slate-400 hover:text-slate-700 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
             </button>
           </div>
         </td>
@@ -1055,7 +929,7 @@ function MobileCard({
           </button>
         ) : (
           <div className="w-16 h-16 rounded-lg bg-slate-50 border border-dashed border-slate-200 flex items-center justify-center text-slate-300">
-            <IconBox />
+            <Box size={16} />
           </div>
         )}
         <div className="flex-1">
@@ -1128,7 +1002,7 @@ function FilterModal({
             onClick={onClose}
             className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors"
           >
-            <IconChevronDown className="rotate-180 text-slate-600" />
+            <ChevronDown size={16} className="rotate-180 text-slate-600" />
           </button>
         </div>
 
