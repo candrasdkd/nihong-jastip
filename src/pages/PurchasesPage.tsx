@@ -519,8 +519,8 @@ export default function PurchasesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/80 font-sans text-slate-900 pb-28">
-      {/* --- LOADING OVERLAY --- */}
+    <div className="min-h-screen bg-slate-50/50 font-sans text-slate-900 pb-28">
+      {/* Loading Overlay */}
       <AnimatePresence>
         {isProcessing && (
           <motion.div
@@ -531,70 +531,75 @@ export default function PurchasesPage() {
           >
             <div className="bg-white px-8 py-6 rounded-2xl shadow-xl border border-slate-100 flex flex-col items-center gap-4">
               <Loader2 className="animate-spin text-orange-500" size={32} />
-              <span className="text-xs font-bold uppercase tracking-widest text-slate-500">
-                Memproses...
-              </span>
+              <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Memproses...</span>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <div className="max-w-3xl mx-auto px-4 sm:px-6">
-        {/* --- HERO HEADER --- */}
-        <header className="pt-8 pb-6">
-          <div className="flex justify-between items-start mb-6">
-            <div>
-              <h1 className="text-3xl font-black text-slate-800 tracking-tight">
-                Jastip<span className="text-orange-500">Tracker</span>.
-              </h1>
-              <p className="text-sm font-medium text-slate-500 mt-1">
-                Kelola pesanan dengan efisien.
-              </p>
+      {/* Sticky Top Bar */}
+      <div className="bg-white border-b border-slate-200 sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="h-16 flex items-center justify-between">
+            <h1 className="text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+              Jastip Tracker
+            </h1>
+            <div className="flex items-center gap-2">
+              {/* Share Button */}
+              <button
+                onClick={() => {
+                  const defaultDate = uniqueDates.length > 0 ? uniqueDates[uniqueDates.length - 1] : "";
+                  setShareConfig({ date: defaultDate, pic: "", status: "all" });
+                  setIsShareOpen(true);
+                }}
+                className="flex items-center gap-2 px-3 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-sm transition-all"
+              >
+                <Share2 size={16} /> Share
+              </button>
             </div>
-            <button
-              onClick={() => {
-                const defaultDate =
-                  uniqueDates.length > 0
-                    ? uniqueDates[uniqueDates.length - 1]
-                    : "";
-                setShareConfig({ date: defaultDate, pic: "", status: "all" });
-                setIsShareOpen(true);
-              }}
-              className="bg-white hover:bg-slate-50 text-slate-600 p-2.5 rounded-xl border border-slate-200 shadow-sm transition-all active:scale-95"
-            >
-              <Share2 size={20} />
-            </button>
           </div>
+        </div>
+      </div>
 
-          <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
-            <StatCard
-              label="Total Item"
-              value={stats.total}
-              icon={Package}
-              bgClass="bg-blue-100"
-              colorClass="text-blue-600"
-            />
-            <StatCard
-              label="Pending"
-              value={stats.pending}
-              icon={Clock}
-              bgClass="bg-orange-100"
-              colorClass="text-orange-600"
-            />
-            <StatCard
-              label="Selesai"
-              value={stats.done}
-              icon={CheckCircle}
-              bgClass="bg-emerald-100"
-              colorClass="text-emerald-600"
-            />
+      {/* Stats Row */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-4">
+        <div className="grid grid-cols-3 gap-3 sm:gap-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex items-center gap-3">
+            <div className="p-2 bg-blue-50 text-blue-600 rounded-xl shrink-0">
+              <Package size={18} />
+            </div>
+            <div>
+              <p className="text-2xl font-black text-slate-800">{stats.total}</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total</p>
+            </div>
           </div>
-        </header>
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex items-center gap-3">
+            <div className="p-2 bg-orange-50 text-orange-600 rounded-xl shrink-0">
+              <Clock size={18} />
+            </div>
+            <div>
+              <p className="text-2xl font-black text-slate-800">{stats.pending}</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pending</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex items-center gap-3">
+            <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl shrink-0">
+              <CheckCircle size={18} />
+            </div>
+            <div>
+              <p className="text-2xl font-black text-slate-800">{stats.done}</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Selesai</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* --- STICKY SEARCH & FILTER --- */}
-        <div className="sticky top-4 z-30 mb-8 space-y-3">
+        <div className="sticky top-16 z-20 mb-6 space-y-3">
           {/* Main Toggle */}
-          <div className="flex bg-white/80 backdrop-blur-xl p-1 rounded-2xl shadow-sm border border-white/50">
+          <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-slate-200">
             <button
               onClick={() => setViewMode("checklist")}
               className={`flex-1 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${viewMode === "checklist" ? "bg-slate-800 text-white shadow-lg" : "text-slate-400 hover:text-slate-600"}`}
@@ -611,7 +616,7 @@ export default function PurchasesPage() {
             </button>
           </div>
 
-          <div className="bg-white/80 backdrop-blur-xl p-2 rounded-2xl shadow-lg shadow-slate-200/50 border border-white/50 flex flex-col sm:flex-row gap-2">
+          <div className="bg-white p-2 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row gap-2">
             <div className="relative flex-1 group">
               <Search
                 className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-orange-500 transition-colors"
@@ -1160,7 +1165,7 @@ export default function PurchasesPage() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.9 }}
             onClick={() => setIsOpen(true)}
-            className="fixed bottom-20 right-6 sm:bottom-6 sm:right-6 h-14 w-14 bg-slate-800 text-white rounded-full shadow-2xl shadow-slate-800/40 flex items-center justify-center z-40 hover:bg-slate-900"
+            className="fixed bottom-20 right-6 h-14 w-14 bg-slate-900 text-white rounded-full shadow-xl shadow-slate-900/30 flex items-center justify-center active:scale-95 transition-transform z-40"
           >
             <Plus size={28} strokeWidth={2.5} />
           </motion.button>
