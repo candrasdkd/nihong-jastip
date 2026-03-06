@@ -262,6 +262,7 @@ export default function App() {
                 user={user!}
                 orders={orders}
                 customers={customers}
+                unitPrice={unitPrice}
                 onSeeAllOrders={() => setTab("orders")}
                 setActiveFeature={(value: string) => setTab(value)}
               />
