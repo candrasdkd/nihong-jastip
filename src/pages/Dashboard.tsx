@@ -77,7 +77,7 @@ function StatCard({
   icon: React.ElementType; accent: string; trend?: number;
 }) {
   return (
-    <Card className={`p-5 bg-white rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow relative overflow-hidden`}>
+    <Card className={`p-5 bg-white rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow relative overflow-hidden group/card`}>
       {/* Left accent bar */}
       <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl ${accent}`} />
       <div className="flex justify-between items-start mb-3 pl-2">
@@ -85,11 +85,23 @@ function StatCard({
         {trend !== undefined && <GrowthBadge value={trend} />}
       </div>
       <div className="pl-2 flex items-end justify-between">
-        <div>
-          <h3 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight leading-tight">{value}</h3>
-          {sub && <p className="text-xs text-slate-400 mt-1">{sub}</p>}
+        <div className="min-w-0 pr-2">
+          <h3 
+            className="text-lg sm:text-2xl font-bold text-slate-800 tracking-tight leading-tight truncate active:scale-[0.98] transition-transform cursor-help"
+            title={String(value)}
+          >
+            {value}
+          </h3>
+          {sub && (
+            <p 
+              className="text-xs text-slate-400 mt-1 truncate active:scale-[0.98] transition-transform cursor-help"
+              title={sub}
+            >
+              {sub}
+            </p>
+          )}
         </div>
-        <div className={`p-2.5 rounded-xl bg-slate-50 text-slate-400`}>
+        <div className={`p-2 sm:p-2.5 rounded-xl bg-slate-50 text-slate-400 shrink-0`}>
           <Icon size={18} />
         </div>
       </div>
