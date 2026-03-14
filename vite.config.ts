@@ -6,17 +6,9 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      strategies: "injectManifest",
-      srcDir: "src",
-      filename: "sw.ts",
       registerType: "prompt",
-      injectRegister: "auto",
-      injectManifest: {
+      workbox: {
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
-      },
-      devOptions: {
-        enabled: true,
-        type: "module",
       },
       includeAssets: ["favicon.ico", "apple-touch-icon.png", "mask-icon.svg"],
       manifest: {

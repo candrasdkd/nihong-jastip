@@ -16,7 +16,7 @@ import { UnitPriceModal } from "./components/UnitPriceModal";
 import { BottomTabBar } from "./components/BottomTabBar";
 import { InstallPrompt } from "./components/InstallPrompt";
 import { NotificationPermissionModal } from "./components/NotificationPermissionModal";
-import { ReloadPrompt } from "./components/ReloadPrompt";
+import UpdatePrompt from "./components/UpdatePrompt";
 
 // Assets & Services
 import logoLight from "./assets/logo-admin.png";
@@ -325,7 +325,7 @@ export default function App() {
         onClose={() => setShowNotificationModal(false)}
         onConfirm={handleEnableNotifications}
       />
-      <ReloadPrompt />
+      <UpdatePrompt />
     </div>
   );
 }
