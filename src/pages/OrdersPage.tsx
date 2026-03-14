@@ -456,35 +456,14 @@ export function OrdersPage({
             />
           </div>
 
-          <div className="flex gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 items-center">
-            {/* Inline Status Filters */}
-            <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
-              <button
-                onClick={() => setStatusFilter("")}
-                className={`px-3 py-1.5 rounded-md text-sm font-semibold whitespace-nowrap transition-all ${statusFilter === "" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
-              >
-                Semua
-              </button>
-              {ORDER_STATUSES.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setStatusFilter(s)}
-                  className={`px-3 py-1.5 rounded-md text-sm font-semibold whitespace-nowrap transition-all ${statusFilter === s ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-
-            <div className="h-6 w-px bg-slate-200 hidden sm:block mx-1" />
-
-            {/* Inline Date Filters */}
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto pb-1 sm:pb-0 sm:items-center">
+            {/* Inline Date Filters (First on mobile) */}
             <div className="flex items-center gap-2">
               <input
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
-                className="px-2 py-1.5 rounded-lg border border-slate-200 text-sm text-slate-700 bg-white focus:ring-2 focus:ring-blue-500 outline-none w-[115px]"
+                className="px-2 py-1.5 rounded-lg border border-slate-200 text-sm text-slate-700 bg-white focus:ring-2 focus:ring-blue-500 outline-none w-full sm:w-[115px]"
                 title="Dari Tanggal"
               />
               <span className="text-slate-400 text-xs">-</span>
@@ -492,9 +471,30 @@ export function OrdersPage({
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
-                className="px-2 py-1.5 rounded-lg border border-slate-200 text-sm text-slate-700 bg-white focus:ring-2 focus:ring-blue-500 outline-none w-[115px]"
+                className="px-2 py-1.5 rounded-lg border border-slate-200 text-sm text-slate-700 bg-white focus:ring-2 focus:ring-blue-500 outline-none w-full sm:w-[115px]"
                 title="Sampai Tanggal"
               />
+            </div>
+
+            <div className="h-6 w-px bg-slate-200 hidden sm:block mx-1" />
+
+            {/* Inline Status Filters (Second on mobile) */}
+            <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 w-full sm:w-auto overflow-x-auto">
+              <button
+                onClick={() => setStatusFilter("")}
+                className={`flex-1 sm:flex-none px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold whitespace-nowrap transition-all ${statusFilter === "" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+              >
+                Semua
+              </button>
+              {ORDER_STATUSES.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setStatusFilter(s)}
+                  className={`flex-1 sm:flex-none px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold whitespace-nowrap transition-all ${statusFilter === s ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                >
+                  {s}
+                </button>
+              ))}
             </div>
 
             {/* DESKTOP ONLY INVOICE BUTTON */}

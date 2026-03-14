@@ -20,8 +20,9 @@ import { BG } from "../utils/constants";
 import {
   TrendingUp, TrendingDown, Wallet, Search, Filter,
   Plus, Trash2, Pencil, ArrowUpRight, ArrowDownLeft,
-  X, FileText,
+  X, FileText, Download,
 } from "lucide-react";
+import { exportLedgerToExcel } from "../utils/exportExcel";
 
 
 // ===== Helper Functions =====
@@ -254,6 +255,14 @@ export function LedgerPage() {
                     <span className="relative inline-flex rounded-full h-3 w-3 bg-indigo-500"></span>
                   </span>
                 )}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => exportLedgerToExcel(filtered, "Laporan_Kas.xlsx")}
+                className="hidden sm:flex items-center gap-2 border-slate-300 bg-white hover:bg-slate-50 text-slate-700 shadow-sm"
+              >
+                <Download className="w-4 h-4" />
+                <span>Export Excel</span>
               </Button>
               <Button
                 onClick={() => setShowForm({ open: true, editing: null })}
@@ -496,6 +505,17 @@ export function LedgerPage() {
           onClose={() => setShowForm({ open: false, editing: null })}
           onSubmit={handleSubmitForm}
         />
+      )}
+
+      {/* Mobile Export Excel Button */}
+      {filtered.length > 0 && (
+        <button
+          onClick={() => exportLedgerToExcel(filtered, "Laporan_Kas.xlsx")}
+          className="sm:hidden fixed bottom-36 right-[28px] z-40 h-12 w-12 bg-white border border-slate-200 rounded-full shadow-xl shadow-slate-200/50 flex items-center justify-center active:scale-95 transition-all animate-in slide-in-from-bottom-5 duration-200"
+          title="Export Excel"
+        >
+          <Download className="w-5 h-5 text-emerald-600" />
+        </button>
       )}
 
       {/* Mobile Floating Action Button */}
