@@ -82,11 +82,10 @@ function StatCard({
 function TypeBadge({ type }: { type: "Masuk" | "Keluar" }) {
   return (
     <span
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-        type === "Masuk"
+      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${type === "Masuk"
           ? "bg-emerald-50 text-emerald-700 border-emerald-200"
           : "bg-rose-50 text-rose-700 border-rose-200"
-      }`}
+        }`}
     >
       {type === "Masuk" ? "Pemasukan" : "Pengeluaran"}
     </span>
@@ -198,6 +197,7 @@ export function LedgerPage() {
     editing?: LedgerEntry | null;
   }>({ open: false, editing: null });
   const [showFilter, setShowFilter] = useState(false);
+  const [showStats, setShowStats] = useState(false); // Default hide for mobile
 
   async function handleDelete(id: string) {
     if (!confirm("Hapus transaksi ini permanen?")) return;
@@ -218,44 +218,14 @@ export function LedgerPage() {
 
   return (
     <div className="min-h-screen bg-slate-50/50 pb-20 font-sans text-slate-900">
-      {/* Header Section */}
+      {/* 1. Header Section (Sticky) */}
       <div className="bg-white border-b border-slate-200 sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-800 tracking-tight">
-                Buku Kas
-              </h1>
-              <p className="text-sm text-slate-500 hidden sm:block">
-                Kelola arus kas harian Anda
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="relative flex-1 sm:w-64">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                  <Search className="w-4 h-4" />
-                </div>
-                <Input
-                  placeholder="Cari transaksi..."
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  className="pl-9 bg-slate-50 border-slate-200 focus:bg-white rounded-lg transition-all"
-                />
-              </div>
-              <Button
-                variant="outline"
-                onClick={() => setShowFilter(true)}
-                className={`relative ${filterCount > 0 ? "border-indigo-500 text-indigo-600 bg-indigo-50" : ""}`}
-              >
-                <Filter className="w-4 h-4 sm:mr-2" />
-                <span className="hidden sm:inline">Filter</span>
-                {filterCount > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-indigo-500"></span>
-                  </span>
-                )}
-              </Button>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="h-16 flex items-center justify-between">
+            <h1 className="text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+              Buku Kas
+            </h1>
+            <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 onClick={() => exportLedgerToExcel(filtered, "Laporan_Kas.xlsx")}
@@ -277,8 +247,62 @@ export function LedgerPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        {/* Toolbar & Filters (Mobile & Desktop) */}
+        <div className="flex flex-col sm:flex-row gap-4 justify-between items-end sm:items-center bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
+          <div className="relative w-full sm:w-96">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+              <Search className="w-4 h-4" />
+            </div>
+            <Input
+              placeholder="Cari transaksi..."
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              className="pl-9 bg-slate-50 border-slate-200 focus:bg-white rounded-lg transition-all"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Button
+              variant="outline"
+              onClick={() => setShowStats(!showStats)}
+              className={`sm:hidden flex-1 h-11 flex items-center justify-center gap-2 transition-all ${
+                showStats
+                  ? "bg-slate-900 text-white border-slate-900 hover:bg-slate-800 hover:text-white"
+                  : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+              }`}
+            >
+              {showStats ? (
+                <>
+                  <X className="w-4 h-4" />
+                  <span>Tutup Ringkasan</span>
+                </>
+              ) : (
+                <>
+                  <FileText className="w-4 h-4 text-indigo-500" />
+                  <span>Lihat Ringkasan</span>
+                </>
+              )}
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={() => setShowFilter(true)}
+              className={`flex-1 sm:flex-none relative h-11 ${filterCount > 0 ? "border-indigo-500 text-indigo-600 bg-indigo-50" : ""}`}
+            >
+              <Filter className="w-4 h-4 mr-2" />
+              <span>Filter</span>
+              {filterCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-indigo-500"></span>
+                </span>
+              )}
+            </Button>
+          </div>
+        </div>
+
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className={`${showStats ? "grid" : "hidden sm:grid"} grid-cols-1 md:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 duration-300`}>
           <StatCard label="Pemasukan" value={totalMasuk} type="income" />
           <StatCard label="Pengeluaran" value={totalKeluar} type="expense" />
           <StatCard label="Sisa Saldo" value={saldo} type="balance" />
@@ -411,11 +435,10 @@ export function LedgerPage() {
                     >
                       {/* Icon Status */}
                       <div
-                        className={`mt-0.5 w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                          r.tipe === "Masuk"
+                        className={`mt-0.5 w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${r.tipe === "Masuk"
                             ? "bg-emerald-100 text-emerald-600"
                             : "bg-rose-100 text-rose-600"
-                        }`}
+                          }`}
                       >
                         {r.tipe === "Masuk" ? (
                           <ArrowDownLeft className="w-5 h-5" />
