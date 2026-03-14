@@ -131,30 +131,38 @@ export function CustomersPage() {
 
   return (
     <div className="min-h-screen bg-slate-50/50 pb-20 font-sans text-slate-900">
-      <div className="max-w-6xl mx-auto space-y-6 px-4">
-        {/* Header & Stats */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-          <div className="pt-6 sm:pt-0">
-            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
+      {/* 1. Header Section (Sticky) */}
+      <div className="bg-white border-b border-slate-200 sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="h-16 flex items-center justify-between">
+            <h1 className="text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
               Pelanggan
             </h1>
-            <p className="text-slate-500 mt-1">
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => {
+                  setEditing(null);
+                  setShowForm(true);
+                }}
+                className="hidden sm:flex bg-slate-900 hover:bg-slate-800 text-white shadow-md shadow-slate-900/10"
+              >
+                <UserPlus className="w-4 h-4 mr-2" /> <span>Tambah Baru</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto space-y-6 px-4 sm:px-6 lg:px-8 py-8">
+        {/* Stats Summary */}
+        <div className="flex items-end justify-between">
+          <div>
+            <p className="text-slate-500 text-sm">
               Total{" "}
               <strong className="text-slate-900">{customers.length}</strong>{" "}
               pelanggan terdaftar
             </p>
           </div>
-          {/* Main Button: Menggunakan variant="primary" default (Orange) atau override class jika ingin tetap Indigo */}
-          <Button
-            onClick={() => {
-              setEditing(null);
-              setShowForm(true);
-            }}
-            className="hidden sm:flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-900/20"
-          >
-            <UserPlus className="w-5 h-5" />
-            <span>Tambah Baru</span>
-          </Button>
         </div>
 
         {/* Toolbar & Search */}
