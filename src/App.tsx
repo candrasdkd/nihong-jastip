@@ -11,7 +11,7 @@ import { LoginPage } from "./pages/LoginPage";
 import PurchasesPage from "./pages/PurchasesPage";
 
 // Components
-import { TabButton } from "./components/ui/TabButton";
+import { Sidebar } from "./components/Sidebar";
 import { UnitPriceModal } from "./components/UnitPriceModal";
 import { BottomTabBar } from "./components/BottomTabBar";
 import { InstallPrompt } from "./components/InstallPrompt";
@@ -36,6 +36,7 @@ export default function App() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [unitPrice, setUnitPrice] = useState<number>(100_000);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Modal States
   const [showUnitPriceModal, setShowUnitPriceModal] = useState(false);
@@ -173,83 +174,22 @@ export default function App() {
         <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:20px_20px] opacity-[0.4] dark:opacity-[0.05]"></div>
       </div>
 
-      {/* HEADER */}
-      <header className="sticky top-0 z-30 backdrop-blur-xl bg-white/80 dark:bg-neutral-950/80 border-b border-neutral-200/80 dark:border-neutral-800/80 supports-[backdrop-filter]:bg-white/60">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
-          {/* Logo Brand */}
-          <button
-            className="flex items-center gap-3 group focus:outline-none"
-            onClick={() => setTab("home")}
-          >
-            <motion.div
-              whileTap={{ scale: 0.95 }}
-              className="h-10 w-10 rounded-full overflow-hidden border-2 border-white dark:border-neutral-800 shadow-sm bg-indigo-50 dark:bg-neutral-900 grid place-items-center relative z-10"
-            >
-              <img
-                src={logoLight}
-                alt="Logo"
-                className="h-full w-full object-cover"
-              />
-            </motion.div>
-            <div className="text-left hidden xs:block">
-              <h1 className="text-lg font-bold leading-none tracking-tight text-neutral-900 dark:text-white">
-                Nihong Jastip
-              </h1>
-              <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider mt-0.5">
-                Admin Dashboard
-              </p>
-            </div>
-          </button>
+      {/* LAYOUT CONTAINER */}
+      <div className="flex h-screen overflow-hidden">
+        {/* SIDEBAR */}
+        <Sidebar
+          currentTab={tab}
+          onTabChange={setTab}
+          isCollapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+          user={user}
+          onLogout={() => setShowLogoutModal(true)}
+        />
 
-          {/* Navigasi Desktop */}
-          <nav className="hidden md:flex items-center gap-1">
-            {(["home", "orders", "customers", "purchase", "cash"] as const).map(
-              (t) => (
-                <TabButton key={t} current={tab} setTab={setTab} id={t}>
-                  {t === "cash"
-                    ? "Kas"
-                    : t.charAt(0).toUpperCase() + t.slice(1)}
-                </TabButton>
-              ),
-            )}
-          </nav>
+        {/* MAIN CONTENT AREA */}
+        <div className="flex-1 overflow-y-auto pb-20 md:pb-0 relative custom-scrollbar">
 
-          {/* User Profile & Logout */}
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-3 pl-3 pr-1 py-1 rounded-full border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-sm">
-              <div className="flex flex-col items-end mr-1">
-                <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-200 leading-none">
-                  {user.displayName || "Admin"}
-                </span>
-                <span className="text-[10px] text-neutral-400 leading-none mt-1 max-w-[100px] truncate">
-                  {user.email}
-                </span>
-              </div>
-              <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 grid place-items-center text-white text-xs font-bold shadow-inner">
-                {user.email?.[0].toUpperCase() || "A"}
-              </div>
-              <button
-                onClick={() => setShowLogoutModal(true)}
-                title="Keluar"
-                className="h-8 w-8 flex items-center justify-center rounded-full text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-              >
-                <LogOut size={18} />
-              </button>
-            </div>
-
-            {/* Mobile Logout Trigger */}
-            <button
-              onClick={() => setShowLogoutModal(true)}
-              className="sm:hidden p-2 text-neutral-500 hover:text-red-500"
-            >
-              <LogOut size={18} />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* ISI KONTEN UTAMA */}
-      <main>
+          <main className="min-h-full">
         <AnimatePresence mode="wait">
           <motion.div
             key={tab}
@@ -282,7 +222,9 @@ export default function App() {
             {tab === "generator" && <StoryGeneratorDynamic />}
           </motion.div>
         </AnimatePresence>
-      </main>
+          </main>
+        </div>
+      </div>
 
       {/* MODAL HARGA & LOGOUT */}
       <AnimatePresence>

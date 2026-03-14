@@ -111,9 +111,7 @@ function StatCard({
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }> = {
   "Belum Membayar": { label: "Belum Bayar", color: "text-red-600", bg: "bg-red-50", icon: Clock },
-  "Diproses":       { label: "Diproses",    color: "text-sky-600",  bg: "bg-sky-50",  icon: Activity },
   "Selesai":        { label: "Selesai",     color: "text-emerald-600", bg: "bg-emerald-50", icon: PackageCheck },
-  "Dibatalkan":     { label: "Dibatalkan",  color: "text-slate-500", bg: "bg-slate-100", icon: XCircle },
 };
 
 function StatusBar({ orders }: { orders: Order[] }) {

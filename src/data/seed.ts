@@ -41,8 +41,8 @@ export function ensureSeed(
     const jumlahKg = Number((Math.random() * 5 + 0.2).toFixed(2));
     const totalHarga = computeTotal(jumlahKg, unitPrice);
     const cust = custs[Math.floor(Math.random() * custs.length)];
-    const status: OrderStatus = ["Pending", "Diproses", "Selesai"][
-      Math.floor(Math.random() * 3)
+    const status: OrderStatus = ["Belum Membayar", "Selesai"][
+      Math.floor(Math.random() * 2)
     ] as OrderStatus;
     return {
       id: crypto.randomUUID(),

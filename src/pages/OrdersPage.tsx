@@ -25,7 +25,7 @@ import { ORDER_STATUSES } from "../utils/constants";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   X, Maximize2, ChevronLeft, ChevronRight, MessageCircle,
-  Plus, Filter, FileText, ChevronDown, Search, Box, Trash2, Pencil,
+  Plus, FileText, ChevronDown, Search, Box, Trash2, Pencil,
   AlertCircle, CheckCircle2,
 } from "lucide-react";
 
@@ -177,9 +177,6 @@ function StatusPill({ status }: { status: string }) {
   const config: Record<string, string> = {
     "Belum Membayar": "bg-red-50 text-red-700 border-red-200",
     Selesai: "bg-gray-100 text-gray-700 border-gray-200",
-    Diproses: "bg-sky-50 text-sky-700 border-sky-200",
-    Dibatalkan:
-      "bg-slate-100 text-slate-500 border-slate-200 line-through decoration-slate-400",
   };
   const cls = config[status] || "bg-gray-50 text-gray-700 border-gray-200";
 
@@ -302,7 +299,6 @@ export function OrdersPage({
     itemIds?: string[];
   }>({ show: false });
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-  const [showFilterModal, setShowFilterModal] = useState(false);
 
   // Toast State
   const [toasts, setToasts] = useState<ToastType[]>([]);
@@ -367,17 +363,6 @@ export function OrdersPage({
     await deleteOrder(id);
     showToast("Pesanan berhasil dihapus", "success");
   }
-
-  const handleApplyFilters = (p: {
-    status: string;
-    from: string;
-    to: string;
-  }) => {
-    setStatusFilter(p.status);
-    setDateFrom(p.from);
-    setDateTo(p.to);
-    setShowFilterModal(false);
-  };
 
   // --- REFACTORED INVOICE CLICK (NO ALERTS) ---
   const handleInvoiceClick = () => {
@@ -471,19 +456,46 @@ export function OrdersPage({
             />
           </div>
 
-          <div className="flex gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-            <Button
-              variant="outline"
-              onClick={() => setShowFilterModal(true)}
-              className={`whitespace-nowrap ${filterCount > 0 ? "bg-blue-50 border-blue-200 text-blue-700" : "text-slate-600"}`}
-            >
-              <Filter className="w-4 h-4 mr-2" /> Filter
-              {filterCount > 0 && (
-                <span className="ml-2 bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded-full">
-                  {filterCount}
-                </span>
-              )}
-            </Button>
+          <div className="flex gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 items-center">
+            {/* Inline Status Filters */}
+            <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
+              <button
+                onClick={() => setStatusFilter("")}
+                className={`px-3 py-1.5 rounded-md text-sm font-semibold whitespace-nowrap transition-all ${statusFilter === "" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+              >
+                Semua
+              </button>
+              {ORDER_STATUSES.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setStatusFilter(s)}
+                  className={`px-3 py-1.5 rounded-md text-sm font-semibold whitespace-nowrap transition-all ${statusFilter === s ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+
+            <div className="h-6 w-px bg-slate-200 hidden sm:block mx-1" />
+
+            {/* Inline Date Filters */}
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="px-2 py-1.5 rounded-lg border border-slate-200 text-sm text-slate-700 bg-white focus:ring-2 focus:ring-blue-500 outline-none w-[115px]"
+                title="Dari Tanggal"
+              />
+              <span className="text-slate-400 text-xs">-</span>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="px-2 py-1.5 rounded-lg border border-slate-200 text-sm text-slate-700 bg-white focus:ring-2 focus:ring-blue-500 outline-none w-[115px]"
+                title="Sampai Tanggal"
+              />
+            </div>
 
             {/* DESKTOP ONLY INVOICE BUTTON */}
             {selectedIds.length > 0 && (
@@ -653,22 +665,6 @@ export function OrdersPage({
           )}
           onClose={() => setShowInvoice({ show: false })}
           unitPrice={unitPrice}
-        />
-      )}
-
-      {showFilterModal && (
-        <FilterModal
-          initial={{ status: statusFilter, from: dateFrom, to: dateTo }}
-          defaultRange={{ from: defaultFrom, to: defaultTo }}
-          onApply={handleApplyFilters}
-          onReset={() => {
-            handleApplyFilters({
-              status: "",
-              from: defaultFrom,
-              to: defaultTo,
-            });
-          }}
-          onClose={() => setShowFilterModal(false)}
         />
       )}
 
@@ -972,100 +968,6 @@ function MobileCard({
         >
           Hapus
         </Button>
-      </div>
-    </div>
-  );
-}
-
-// ===== FILTER MODAL =====
-function FilterModal({
-  initial,
-  defaultRange,
-  onApply,
-  onReset,
-  onClose,
-}: any) {
-  const [localStatus, setLocalStatus] = useState(initial.status || "");
-  const [localFrom, setLocalFrom] = useState(initial.from || defaultRange.from);
-  const [localTo, setLocalTo] = useState(initial.to || defaultRange.to);
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
-        onClick={onClose}
-      />
-      <div className="relative w-full sm:w-[450px] bg-white sm:rounded-2xl rounded-t-2xl shadow-2xl p-6 animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-200">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-lg font-bold text-slate-800">Filter Pesanan</h3>
-          <button
-            onClick={onClose}
-            className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors"
-          >
-            <ChevronDown size={16} className="rotate-180 text-slate-600" />
-          </button>
-        </div>
-
-        <div className="space-y-5">
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">
-              Status Pesanan
-            </label>
-            <Select
-              value={localStatus}
-              onChange={(e: any) => setLocalStatus(e.target.value)}
-              className="w-full"
-            >
-              <option value="">Semua Status</option>
-              {ORDER_STATUSES.map((s: string) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </Select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Dari
-              </label>
-              <Input
-                type="date"
-                value={localFrom}
-                onChange={(e: any) => setLocalFrom(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Sampai
-              </label>
-              <Input
-                type="date"
-                value={localTo}
-                onChange={(e: any) => setLocalTo(e.target.value)}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-8 flex gap-3">
-          <Button
-            variant="ghost"
-            onClick={onReset}
-            className="flex-1 text-slate-500"
-          >
-            Reset
-          </Button>
-          <Button
-            onClick={() =>
-              onApply({ status: localStatus, from: localFrom, to: localTo })
-            }
-            className="flex-[2] bg-slate-900 text-white hover:bg-slate-800"
-          >
-            Terapkan Filter
-          </Button>
-        </div>
       </div>
     </div>
   );

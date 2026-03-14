@@ -1,4 +1,4 @@
-export type OrderStatus = "Pending" | "Diproses" | "Selesai" | "Dibatalkan";
+export type OrderStatus = "Belum Membayar" | "Selesai";
 
 export type TabId =
   | "home"
@@ -67,7 +67,7 @@ export type OrderDoc = {
   hargaOngkirMarkup: number;
   totalPembayaran: number;
   totalKeuntungan: number;
-  status: OrderStatus; // 'Belum Membayar' | 'Pembayaran Selesai' | ...
+  status: OrderStatus; // 'Belum Membayar' | 'Selesai'
   tipeNominal?: string;
   catatan?: string;
   imageUrl?: string;
