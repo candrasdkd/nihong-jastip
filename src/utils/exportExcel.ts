@@ -1,5 +1,7 @@
 import * as XLSX from "xlsx";
 import { LedgerEntry } from "../services/ledgerFirebase";
+import { ExtendedOrder } from "../types";
+import { compute } from "./helpers";
 
 export function exportLedgerToExcel(data: LedgerEntry[], filename: string = "Laporan_Kas.xlsx") {
   // Map data to the desired format for Excel
@@ -34,5 +36,39 @@ export function exportLedgerToExcel(data: LedgerEntry[], filename: string = "Lap
   XLSX.utils.book_append_sheet(workbook, worksheet, "Buku Kas");
 
   // Trigger download
+  XLSX.writeFile(workbook, filename);
+}
+
+export function exportOrdersToExcel(orders: ExtendedOrder[], unitPrice: number, filename: string = "Laporan_Pesanan.xlsx") {
+  const exportData = orders.map((o) => {
+    const d = compute(o, unitPrice);
+    return {
+      "Nama Pelanggan": o.namaPelanggan,
+      "Nama Barang": o.namaBarang,
+      "Berat (Kg)": d.kg,
+      Status: o.status,
+      Tagihan: d.totalPembayaran,
+      Profit: d.totalKeuntungan,
+      Currency: d.currency,
+      Tanggal: o.tanggal,
+    };
+  });
+
+  const worksheet = XLSX.utils.json_to_sheet(exportData);
+  const workbook = XLSX.utils.book_new();
+
+  const wscols = [
+    { wch: 25 }, // Nama Pelanggan
+    { wch: 30 }, // Nama Barang
+    { wch: 10 }, // Berat
+    { wch: 15 }, // Status
+    { wch: 15 }, // Tagihan
+    { wch: 15 }, // Profit
+    { wch: 10 }, // Currency
+    { wch: 12 }, // Tanggal
+  ];
+  worksheet["!cols"] = wscols;
+
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Pesanan");
   XLSX.writeFile(workbook, filename);
 }

@@ -26,8 +26,9 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   X, Maximize2, ChevronLeft, ChevronRight, MessageCircle,
   Plus, FileText, ChevronDown, Search, Box, Trash2, Pencil,
-  AlertCircle, CheckCircle2,
+  AlertCircle, CheckCircle2, Download,
 } from "lucide-react";
+import { exportOrdersToExcel } from "../utils/exportExcel";
 
 // ===== IMAGE PREVIEW MODAL =====
 function ImagePreview({
@@ -436,6 +437,14 @@ export function OrdersPage({
               >
                 <Plus className="w-4 h-4 mr-2" /> Buat Pesanan
               </Button>
+              <Button
+                variant="outline"
+                onClick={() => exportOrdersToExcel(orders, unitPrice)}
+                className="hidden sm:flex items-center gap-2 border-slate-300 bg-white hover:bg-slate-50 text-slate-700 shadow-sm"
+              >
+                <Download className="w-4 h-4" />
+                <span>Export Excel</span>
+              </Button>
             </div>
           </div>
         </div>
@@ -691,6 +700,17 @@ export function OrdersPage({
       >
         <Plus className="w-6 h-6" />
       </button>
+
+      {/* Floating Action Button (Export Excel Mobile) */}
+      {orders.length > 0 && (
+        <button
+          onClick={() => exportOrdersToExcel(orders, unitPrice)}
+          className="sm:hidden fixed bottom-36 right-6 z-40 h-14 w-14 bg-white border border-slate-200 rounded-full shadow-xl shadow-slate-200/50 flex items-center justify-center active:scale-95 transition-all animate-in slide-in-from-bottom-5 duration-200"
+          title="Export Excel"
+        >
+          <Download className="w-6 h-6 text-emerald-600" />
+        </button>
+      )}
     </div>
   );
 }
