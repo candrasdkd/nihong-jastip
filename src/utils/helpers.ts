@@ -49,6 +49,16 @@ export const formatAndAddYear = (dateString: string) => {
   return new Intl.DateTimeFormat("id-ID", options).format(date);
 };
 
+export const formatDateDayMonth = (dateString: string) => {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  const options = {
+    day: "numeric" as const,
+    month: "long" as const,
+  };
+  return new Intl.DateTimeFormat("id-ID", options).format(date);
+};
+
 export function normalizeTanggalString(v?: string) {
   if (!v) return "";
   // Jika sudah 'yyyy-MM-dd' biarkan

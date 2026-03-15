@@ -32,6 +32,7 @@ import {
   SearchX,
   ExternalLink,
   User,
+  Users,
   CheckCircle,
   Clock,
   Share2,
@@ -43,7 +44,7 @@ import {
   ChevronLeft,
   ChevronRight
 } from "lucide-react";
-import { formatAndAddYear } from "../utils/helpers";
+import { formatAndAddYear, formatDateDayMonth } from "../utils/helpers";
 import { compressImage } from "../utils/image";
 import SearchableSelect from "../components/ui/SearchableSelect";
 
@@ -120,7 +121,6 @@ export default function PurchasesPage() {
 
   // Modal State
   const [isOpen, setIsOpen] = useState(false);
-  const [isShareOpen, setIsShareOpen] = useState(false);
   const [editing, setEditing] = useState<PurchaseItem | null>(null);
   const [isBulkEditing, setIsBulkEditing] = useState(false);
   const [bulkPrices, setBulkPrices] = useState<Record<string, { originalPrice: number | ""; jastipPrice: number | "" }>>({});
@@ -144,13 +144,6 @@ export default function PurchasesPage() {
   const [form, setForm] = useState(emptyForm);
   const [drafts, setDrafts] = useState<Omit<PurchaseItem, "id">[]>([]);
 
-  // Share Config
-  const [shareConfig, setShareConfig] = useState<ShareConfig>({
-    date: "",
-    pic: "",
-    status: "all",
-  });
-  const [shareMessage, setShareMessage] = useState("");
 
   const [customers, setCustomers] = useState<PurchaseCustomer[]>([]);
   const [datePhotos, setDatePhotos] = useState<Record<string, string[]>>({});
@@ -158,6 +151,7 @@ export default function PurchasesPage() {
   const fileInputRefForDate = useRef<HTMLInputElement>(null);
   const [activeUploadDate, setActiveUploadDate] = useState<{ date: string; customer: string } | null>(null);
   const [selectedPhoto, setSelectedPhoto] = useState<{ url: string; date: string; customer: string } | null>(null);
+  const [shareModal, setShareModal] = useState<{ type: 'selection' | 'admin' | 'customer'; date?: string } | null>(null);
 
   const nameInputRef = useRef<HTMLInputElement>(null);
 
@@ -441,7 +435,55 @@ export default function PurchasesPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedPhoto, datePhotos]);
 
-  // --- DATA PROCESSING ---
+  const handleShareToAdmin = (picName: string, date: string) => {
+    const itemsForPic = items.filter(i => i.pic === picName && i.shippingDate === date);
+    if (itemsForPic.length === 0) return;
+
+    let message = `*Daftar Belanja - ${picName}*\n`;
+    message += `📅 Tanggal: ${formatAndAddYear(date)}\n\n`;
+
+    const byCustomer = itemsForPic.reduce((acc, i) => {
+      const c = i.customer || "Tanpa Customer";
+      if (!acc[c]) acc[c] = [];
+      acc[c].push(i);
+      return acc;
+    }, {} as Record<string, PurchaseItem[]>);
+
+    Object.entries(byCustomer).forEach(([customer, customerItems]) => {
+      message += `👤 *${customer.toUpperCase()}*\n`;
+      customerItems.forEach(item => {
+        message += `• ${item.name} (Qty: ${item.quantity})\n`;
+        if (item.link) message += `  🔗 ${item.link}\n`;
+        if (item.note) message += `  📝 ${item.note}\n`;
+      });
+      message += `\n`;
+    });
+
+    const encoded = encodeURIComponent(message);
+    window.open(`https://wa.me/?text=${encoded}`, '_blank');
+    setShareModal(null);
+  };
+
+  const handleShareToCustomer = (customerName: string, date: string) => {
+    const itemsForCustomer = items.filter(i => i.customer === customerName && i.shippingDate === date);
+    if (itemsForCustomer.length === 0) return;
+
+    let message = `*Rincian Pesanan - ${customerName}*\n`;
+    message += `📅 Tanggal Pengiriman: ${formatAndAddYear(date)}\n\n`;
+
+    itemsForCustomer.forEach((item, idx) => {
+      message += `${idx + 1}. *${item.name}*\n`;
+      message += `   Qty: ${item.quantity}\n`;
+      if (item.note) message += `   Catatan: ${item.note}\n`;
+      message += `\n`;
+    });
+
+    message += `Terima kasih sudah belanja! 🙏`;
+
+    const encoded = encodeURIComponent(message);
+    window.open(`https://wa.me/?text=${encoded}`, '_blank');
+    setShareModal(null);
+  };
   const processedItems = useMemo(() => {
     let result = items;
 
@@ -516,76 +558,10 @@ export default function PurchasesPage() {
     () => [...new Set(items.map((i) => i.shippingDate))].sort(),
     [items],
   );
-  const uniquePics = useMemo(() => {
-    if (!shareConfig.date) return PIC_OPTIONS;
-    return [
-      ...new Set(
-        items
-          .filter((i) => i.shippingDate === shareConfig.date)
-          .map((i) => i.pic),
-      ),
-    ];
-  }, [items, shareConfig.date]);
 
   // --- SHARE GENERATOR ---
-  const generateShareText = () => {
-    const filteredForShare = items.filter((i) => {
-      const matchDate = shareConfig.date
-        ? i.shippingDate === shareConfig.date
-        : true;
-      const matchPic = shareConfig.pic ? i.pic === shareConfig.pic : true;
-      const matchStatus =
-        shareConfig.status === "all"
-          ? true
-          : shareConfig.status === "done"
-            ? i.isDone
-            : !i.isDone;
-      return matchDate && matchPic && matchStatus;
-    });
-
-    if (filteredForShare.length === 0) return "Tidak ada data.";
-
-    const groupedByCustomer: Record<string, PurchaseItem[]> = {};
-    filteredForShare.forEach((i) => {
-      const custName = i.customer.trim().toUpperCase();
-      if (!groupedByCustomer[custName]) groupedByCustomer[custName] = [];
-      groupedByCustomer[custName].push(i);
-    });
-
-    let text = `📦 *LAPORAN JASTIP*\n`;
-    if (shareConfig.date) text += `🗓 ${formatAndAddYear(shareConfig.date)}\n`;
-    if (shareConfig.pic) text += `👤 PIC: ${shareConfig.pic}\n`;
-    text += `----------------------\n`;
-
-    Object.keys(groupedByCustomer)
-      .sort()
-      .forEach((customer) => {
-        text += `\n👤 *${customer}*\n`;
-        groupedByCustomer[customer]
-          .sort((a, b) => a.name.localeCompare(b.name))
-          .forEach((item) => {
-            text += `${item.isDone ? "✅" : "⭕️"} ${item.name} (${item.quantity})`;
-            if (item.jastipPrice) text += ` [Rp${formatRp(item.jastipPrice)}]`;
-            if (item.note) text += `\n   └ _${item.note}_`;
-            text += `\n`;
-          });
-      });
-    return text;
-  };
-
-  useEffect(() => {
-    if (isShareOpen) {
-      setShareMessage(generateShareText());
-    }
-  }, [isShareOpen, shareConfig, items]);
-
-  const handleSendWhatsapp = () => {
-    window.open(
-      `https://api.whatsapp.com/send?text=${encodeURIComponent(shareMessage)}`,
-      "_blank",
-    );
-    setIsShareOpen(false);
-  };
+  // --- SPLIT SHARING LOGIC ---
+  // (Using handleShareToAdmin and handleShareToCustomer defined above)
 
   return (
     <div className="min-h-screen bg-slate-50/50 font-sans text-slate-900 pb-28">
@@ -616,12 +592,8 @@ export default function PurchasesPage() {
             <div className="flex items-center gap-2">
               {/* Share Button */}
               <button
-                onClick={() => {
-                  const defaultDate = uniqueDates.length > 0 ? uniqueDates[uniqueDates.length - 1] : "";
-                  setShareConfig({ date: defaultDate, pic: "", status: "all" });
-                  setIsShareOpen(true);
-                }}
-                className="flex items-center gap-2 px-3 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-sm transition-all"
+                onClick={() => setShareModal({ type: 'selection' })}
+                className="flex items-center gap-2 px-3 py-2 text-sm font-semibold text-orange-600 bg-orange-50 border border-orange-100 rounded-xl hover:bg-orange-100 shadow-sm transition-all"
               >
                 <Share2 size={16} /> Share
               </button>
@@ -820,24 +792,33 @@ export default function PurchasesPage() {
                                       {customer}
                                     </h4>
                                   </div>
-                                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
-                                    {datePhotos[`${date}_${customer}`]?.length || 0}/8 Foto
-                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={() => handleShareToCustomer(customer, date)}
+                                      className="p-1 px-2 bg-emerald-50 text-emerald-600 rounded-lg text-[9px] font-black hover:bg-emerald-100 transition-colors flex items-center gap-1 border border-emerald-100"
+                                    >
+                                      <Share2 size={10} />
+                                      WA CUSTOMER
+                                    </button>
+                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
+                                      {datePhotos[`${date}_${customer}`]?.length || 0}/8 Foto
+                                    </span>
+                                  </div>
                                 </div>
 
                                 {/* Customer Photos Gallery */}
                                 <div className="px-2 py-3 bg-white border-b border-slate-100">
                                   <div className="flex items-center gap-3 overflow-x-auto no-scrollbar">
                                     {(datePhotos[`${date}_${customer}`] || []).map((url, idx) => (
-                                      <motion.div 
-                                        key={idx} 
+                                      <motion.div
+                                        key={idx}
                                         whileHover={{ scale: 1.05 }}
                                         whileTap={{ scale: 0.95 }}
                                         className="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-white shadow-sm shrink-0 group/photo cursor-zoom-in"
                                       >
-                                        <img 
-                                          src={url} 
-                                          alt={`${customer} - ${idx}`} 
+                                        <img
+                                          src={url}
+                                          alt={`${customer} - ${idx}`}
                                           className="w-full h-full object-cover"
                                           onClick={() => setSelectedPhoto({ url, date, customer })}
                                         />
@@ -1089,7 +1070,7 @@ export default function PurchasesPage() {
                       <Badge color="blue">{data.total} ITEMS</Badge>
                     </div>
                   </div>
-                  
+
                   {/* Date Summary (Pricing View) */}
                   <div className="px-5 py-4 bg-slate-50 border-b border-slate-200">
                     <div className="flex flex-wrap gap-2 items-center">
@@ -1148,24 +1129,24 @@ export default function PurchasesPage() {
                                         {customer}
                                       </span>
                                     </div>
-                                    
+
                                     {/* Pricing View Customer Photos */}
                                     <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
                                       {(datePhotos[`${date}_${customer}`] || []).map((url, idx) => (
-                                        <motion.div 
+                                        <motion.div
                                           key={idx}
                                           whileHover={{ scale: 1.1 }}
                                           className="relative w-10 h-10 rounded-lg overflow-hidden border border-white shadow-sm shrink-0 cursor-zoom-in"
                                         >
-                                          <img 
-                                            src={url} 
+                                          <img
+                                            src={url}
                                             className="w-full h-full object-cover"
                                             onClick={() => setSelectedPhoto({ url, date, customer })}
                                           />
                                         </motion.div>
                                       ))}
                                       {(!datePhotos[`${date}_${customer}`] || datePhotos[`${date}_${customer}`].length < 8) && (
-                                        <button 
+                                        <button
                                           onClick={() => {
                                             setActiveUploadDate({ date, customer });
                                             fileInputRefForDate.current?.click();
@@ -1330,534 +1311,559 @@ export default function PurchasesPage() {
         </motion.button>
 
 
-          {/* --- MODAL INPUT --- */}
-          <AnimatePresence>
-            {isOpen && (
-              <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 sm:mt-0">
-                {/* Backdrop */}
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  onClick={closeModal}
-                  className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-                />
+        {/* --- MODAL INPUT --- */}
+        <AnimatePresence>
+          {isOpen && (
+            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 sm:mt-0">
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={closeModal}
+                className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+              />
 
-                {/* Modal Container */}
-                <motion.div
-                  initial={{ y: "100%" }}
-                  animate={{ y: 0 }}
-                  exit={{ y: "100%" }}
-                  transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                  className="bg-slate-50 w-full max-w-4xl h-[92dvh] sm:h-[85vh] rounded-t-3xl sm:rounded-3xl shadow-2xl relative flex flex-col overflow-hidden"
-                >
-                  {/* 1. HEADER (Fixed) */}
-                  <div className="bg-white px-5 py-4 border-b border-slate-200 flex justify-between items-center shrink-0 z-30">
-                    <div>
-                      <h2 className="text-lg font-black text-slate-800 tracking-tight">
-                        {editing ? "Edit Pesanan" : "Input Pesanan"}
-                      </h2>
-                      <p className="text-xs font-medium text-slate-400">
-                        {editing
-                          ? "Perbarui data item ini"
-                          : "Tambah item baru ke antrian"}
-                      </p>
-                    </div>
+              {/* Modal Container */}
+              <motion.div
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                className="bg-slate-50 w-full max-w-4xl h-[92dvh] sm:h-[85vh] rounded-t-3xl sm:rounded-3xl shadow-2xl relative flex flex-col overflow-hidden"
+              >
+                {/* 1. HEADER (Fixed) */}
+                <div className="bg-white px-5 py-4 border-b border-slate-200 flex justify-between items-center shrink-0 z-30">
+                  <div>
+                    <h2 className="text-lg font-black text-slate-800 tracking-tight">
+                      {editing ? "Edit Pesanan" : "Input Pesanan"}
+                    </h2>
+                    <p className="text-xs font-medium text-slate-400">
+                      {editing
+                        ? "Perbarui data item ini"
+                        : "Tambah item baru ke antrian"}
+                    </p>
+                  </div>
+                  <button
+                    onClick={closeModal}
+                    className="bg-slate-100 p-2 rounded-full hover:bg-slate-200 text-slate-500 transition-colors"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                {/* 2. TABS (Mobile Only - Fixed) */}
+                {!editing && (
+                  <div className="flex sm:hidden bg-white border-b border-slate-200 shrink-0 z-30">
                     <button
-                      onClick={closeModal}
-                      className="bg-slate-100 p-2 rounded-full hover:bg-slate-200 text-slate-500 transition-colors"
+                      onClick={() => setActiveTab("input")}
+                      className={`flex-1 py-3 text-[11px] font-bold uppercase tracking-widest transition-colors ${activeTab === "input" ? "text-orange-600 border-b-2 border-orange-600 bg-orange-50" : "text-slate-400"}`}
                     >
-                      <X size={20} />
+                      Formulir
+                    </button>
+                    <button
+                      onClick={() => setActiveTab("draft")}
+                      className={`flex-1 py-3 text-[11px] font-bold uppercase tracking-widest relative transition-colors ${activeTab === "draft" ? "text-orange-600 border-b-2 border-orange-600 bg-orange-50" : "text-slate-400"}`}
+                    >
+                      Antrian
+                      {drafts.length > 0 && (
+                        <span className="ml-2 bg-red-500 text-white px-1.5 py-0.5 rounded-full text-[9px] min-w-[18px] inline-block text-center">
+                          {drafts.length}
+                        </span>
+                      )}
                     </button>
                   </div>
+                )}
 
-                  {/* 2. TABS (Mobile Only - Fixed) */}
-                  {!editing && (
-                    <div className="flex sm:hidden bg-white border-b border-slate-200 shrink-0 z-30">
+                {/* 3. CONTENT BODY (Scrollable Area) */}
+                {/* min-h-0 sangat penting agar child scroll berfungsi didalam flex parent */}
+                <div className="flex flex-1 min-h-0 flex-col sm:flex-row relative bg-slate-50">
+                  {/* --- KIRI: FORM INPUT --- */}
+                  <form
+                    onSubmit={(e) => e.preventDefault()}
+                    className={`flex-1 flex flex-col relative h-full ${editing ? "flex" : (activeTab === "draft" ? "hidden sm:flex" : "flex")}`}
+                  >
+                    {/* Scrollable Container */}
+                    <div className="flex-1 overflow-y-auto custom-scrollbar p-5 pb-32 sm:pb-28">
+                      <div className="space-y-5">
+
+                        {!isSimpleEdit && (
+                          <>
+                            {/* Input Nama (Primary) */}
+                            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
+                                  Nama Barang
+                                </label>
+                                <input
+                                  ref={nameInputRef}
+                                  autoFocus={!editing}
+                                  className="w-full text-lg font-bold text-slate-800 placeholder:text-slate-300 border-b-2 border-slate-100 focus:border-orange-500 outline-none py-2 bg-transparent transition-colors"
+                                  placeholder="Contoh: Coklat Royce..."
+                                  value={form.name}
+                                  onChange={(e) =>
+                                    setForm({ ...form, name: e.target.value })
+                                  }
+                                />
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                  <div className="flex justify-between items-center h-4">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
+                                      Jumlah
+                                    </label>
+                                  </div>
+                                  <input
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-bold text-sm outline-none focus:ring-2 focus:ring-orange-100"
+                                    placeholder="1"
+                                    value={form.quantity}
+                                    onChange={(e) =>
+                                      setForm({ ...form, quantity: e.target.value })
+                                    }
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <div className="flex justify-between items-center h-4">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
+                                      Customer
+                                    </label>
+                                    <button
+                                      onClick={handleAddNewCustomer}
+                                      className="text-[10px] font-bold text-orange-500 hover:text-orange-600 flex items-center gap-0.5"
+                                    >
+                                      <Plus size={10} strokeWidth={3} />
+                                      BARU
+                                    </button>
+                                  </div>
+                                  <SearchableSelect
+                                    placeholder="Cari Customer..."
+                                    value={form.customer}
+                                    onChange={(val) => setForm({ ...form, customer: val })}
+                                    options={customerOptions}
+                                    buttonClassName="bg-slate-50 border-slate-200 font-bold focus:ring-orange-100"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </>
+                        )}
+
+                        {/* Pricing Fields - Always if simpleEdit or usageType is pricing */}
+                        {editing && (
+                          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                            {isSimpleEdit && (
+                              <div className="mb-4 pb-4 border-b border-slate-50">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Update Harga Untuk</p>
+                                <p className="text-sm font-bold text-slate-800">{form.name}</p>
+                              </div>
+                            )}
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-orange-400 uppercase tracking-widest ml-1">
+                                  Harga Asli
+                                </label>
+                                <div className="relative">
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">Rp</span>
+                                  <input
+                                    type="text"
+                                    className="w-full bg-orange-50/50 border border-orange-100 rounded-xl pl-8 pr-3 py-2.5 font-bold text-sm outline-none focus:ring-2 focus:ring-orange-100 placeholder:text-orange-200"
+                                    placeholder="0"
+                                    value={formatRp(form.originalPrice)}
+                                    onChange={(e) =>
+                                      setForm({ ...form, originalPrice: parseRp(e.target.value) })
+                                    }
+                                  />
+                                </div>
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest ml-1">
+                                  Harga Jastip
+                                </label>
+                                <div className="relative">
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">Rp</span>
+                                  <input
+                                    type="text"
+                                    className="w-full bg-emerald-50/50 border border-emerald-100 rounded-xl pl-8 pr-3 py-2.5 font-bold text-sm outline-none focus:ring-2 focus:ring-emerald-100 placeholder:text-emerald-200"
+                                    placeholder="0"
+                                    value={formatRp(form.jastipPrice)}
+                                    onChange={(e) =>
+                                      setForm({ ...form, jastipPrice: parseRp(e.target.value) })
+                                    }
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {!isSimpleEdit && (
+                          <>
+                            {/* Input Detail (Secondary) */}
+                            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                  <div className="flex justify-between items-center h-4">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
+                                      Tanggal Pengiriman
+                                    </label>
+                                  </div>
+                                  <input
+                                    type="date"
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-bold text-sm outline-none focus:ring-2 focus:ring-orange-100"
+                                    value={form.shippingDate}
+                                    onChange={(e) =>
+                                      setForm({
+                                        ...form,
+                                        shippingDate: e.target.value,
+                                      })
+                                    }
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <div className="flex justify-between items-center h-4">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
+                                      PIC
+                                    </label>
+                                  </div>
+                                  <div className="relative">
+                                    <select
+                                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-bold text-sm outline-none appearance-none focus:ring-2 focus:ring-orange-100"
+                                      value={form.pic}
+                                      onChange={(e) =>
+                                        setForm({ ...form, pic: e.target.value })
+                                      }
+                                    >
+                                      <option value="">Pilih...</option>
+                                      {PIC_OPTIONS.map((p) => (
+                                        <option key={p} value={p}>
+                                          {p}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <ChevronDown
+                                      size={14}
+                                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
+                                  Platform
+                                </label>
+                                <div className="flex flex-wrap gap-2">
+                                  {PLATFORM_OPTIONS.map((p) => (
+                                    <button
+                                      key={p}
+                                      onClick={() =>
+                                        setForm({ ...form, platform: p })
+                                      }
+                                      className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-all ${form.platform === p ? "bg-slate-800 text-white border-slate-800" : "bg-white text-slate-500 border-slate-200"}`}
+                                    >
+                                      {p}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+
+
+                            <details className="group bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                              <summary className="list-none flex justify-between items-center cursor-pointer">
+                                <span className="text-xs font-bold text-slate-500">
+                                  Catatan & Link
+                                </span>
+                                <Plus
+                                  size={16}
+                                  className="text-slate-400 group-open:rotate-45 transition-transform"
+                                />
+                              </summary>
+                              <div className="mt-3 pt-3 border-t border-slate-100 space-y-3">
+                                <input
+                                  placeholder="Link Produk..."
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-bold text-sm outline-none focus:ring-2 focus:ring-orange-100 placeholder:font-medium"
+                                  value={form.link}
+                                  onChange={(e) =>
+                                    setForm({ ...form, link: e.target.value })
+                                  }
+                                />
+                                <textarea
+                                  placeholder="Catatan..."
+                                  rows={2}
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-bold text-sm outline-none focus:ring-2 focus:ring-orange-100 resize-none placeholder:font-medium"
+                                  value={form.note}
+                                  onChange={(e) =>
+                                    setForm({ ...form, note: e.target.value })
+                                  }
+                                />
+                              </div>
+                            </details>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* BUTTON ACTION (FIXED BOTTOM) */}
+                    <div className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-200 z-20 shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
+                      {editing ? (
+                        <button
+                          type="button"
+                          onClick={handleSaveAll}
+                          disabled={isProcessing}
+                          className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white h-12 rounded-xl font-black flex items-center justify-center gap-2 shadow-lg shadow-orange-200 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale"
+                        >
+                          {isProcessing ? (
+                            <Loader2 size={20} className="animate-spin" />
+                          ) : (
+                            <Send size={20} />
+                          )}
+                          {isSimpleEdit ? "UPDATE HARGA" : "SIMPAN PERUBAHAN"}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={addToDraft}
+                          disabled={
+                            !form.name ||
+                            !form.pic ||
+                            !form.shippingDate ||
+                            !form.customer
+                          }
+                          className="w-full bg-slate-900 text-white h-12 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-slate-300 active:scale-95 transition-all disabled:opacity-50 disabled:active:scale-100"
+                        >
+                          <ListPlus size={18} />
+                          <span className="text-sm tracking-wide">
+                            TAMBAH KE ANTRIAN
+                          </span>
+                        </button>
+                      )}
+                    </div>
+                  </form>
+
+                  {/* --- KANAN: DRAFT LIST --- */}
+                  <div
+                    className={`flex-1 flex flex-col h-full bg-slate-100 sm:border-l border-slate-200 relative ${editing ? "hidden sm:flex" : (activeTab === "input" ? "hidden sm:flex" : "flex")}`}
+                  >
+                    {/* Header Draft */}
+                    <div className="p-4 bg-white/50 border-b border-slate-200 flex justify-between items-center sticky top-0 z-10">
+                      <span className="text-xs font-black text-slate-500 uppercase tracking-widest">
+                        {editing
+                          ? "Preview"
+                          : `Daftar Antrian (${drafts.length})`}
+                      </span>
+                      {!editing && drafts.length > 0 && (
+                        <button
+                          onClick={() => setDrafts([])}
+                          className="text-[10px] text-red-500 font-bold bg-red-50 px-2 py-1 rounded hover:bg-red-100"
+                        >
+                          HAPUS SEMUA
+                        </button>
+                      )}
+                    </div>
+
+                    {/* List Draft */}
+                    <div className="flex-1 overflow-y-auto p-4 space-y-3 pb-32">
+                      {editing ? (
+                        <div className="bg-white p-5 rounded-2xl border-2 border-orange-100 shadow-sm text-center">
+                          <p className="text-xs font-bold text-orange-500 uppercase mb-2">
+                            Sedang Mengedit
+                          </p>
+                          <h3 className="text-lg font-black text-slate-800">
+                            {form.name || "..."}
+                          </h3>
+                        </div>
+                      ) : drafts.length === 0 ? (
+                        <div className="h-full flex flex-col items-center justify-center opacity-40 mt-10 sm:mt-0">
+                          <ClipboardList
+                            size={40}
+                            className="mb-2 text-slate-400"
+                          />
+                          <p className="text-xs font-bold text-slate-400 uppercase">
+                            Belum ada antrian
+                          </p>
+                        </div>
+                      ) : (
+                        drafts.map((d, i) => (
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            key={i}
+                            className="bg-white p-3 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center group"
+                          >
+                            <div className="min-w-0 pr-2">
+                              <p className="font-bold text-slate-800 text-sm truncate">
+                                {d.name}
+                              </p>
+                              <div className="flex gap-2 mt-1">
+                                <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold uppercase">
+                                  {d.customer}
+                                </span>
+                                <span className="text-[10px] bg-orange-50 text-orange-600 px-1.5 py-0.5 rounded font-bold uppercase">
+                                  {d.quantity}
+                                </span>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() =>
+                                setDrafts(drafts.filter((_, idx) => idx !== i))
+                              }
+                              className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </motion.div>
+                        ))
+                      )}
+                    </div>
+
+                    {/* BUTTON SIMPAN (FIXED BOTTOM) - Only for Drafts Save */}
+                    {!editing && (
+                      <div className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-200 z-20 shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
+                        <button
+                          onClick={handleSaveAll}
+                          disabled={
+                            isProcessing || drafts.length === 0
+                          }
+                          className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white h-12 rounded-xl font-black flex items-center justify-center gap-2 shadow-lg shadow-orange-200 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale"
+                        >
+                          {isProcessing ? (
+                            <Loader2 size={20} className="animate-spin" />
+                          ) : (
+                            <Send size={20} />
+                          )}
+                          SIMPAN SEMUA ({drafts.length})
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Split Share Modal */}
+        <AnimatePresence>
+          {shareModal && (
+            <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShareModal(null)}
+                className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+              />
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                className="relative bg-white rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden border border-slate-100"
+              >
+                <div className="p-8">
+                  {shareModal.type === 'selection' && (
+                    <div className="space-y-4">
+                      <div className="text-center mb-6">
+                        <div className="w-16 h-16 bg-orange-100 text-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                          <Share2 size={32} />
+                        </div>
+                        <h3 className="text-xl font-black text-slate-800 tracking-tight">Pilih Target Share</h3>
+                        <p className="text-slate-500 text-sm mt-1">Ingin membagikan rincian ke siapa?</p>
+                      </div>
                       <button
-                        onClick={() => setActiveTab("input")}
-                        className={`flex-1 py-3 text-[11px] font-bold uppercase tracking-widest transition-colors ${activeTab === "input" ? "text-orange-600 border-b-2 border-orange-600 bg-orange-50" : "text-slate-400"}`}
+                        onClick={() => setShareModal({ ...shareModal, type: 'admin' })}
+                        className="w-full p-5 bg-orange-50 hover:bg-orange-100 border-2 border-orange-100 text-orange-700 rounded-2xl font-black text-left flex items-center gap-4 transition-all group"
                       >
-                        Formulir
+                        <div className="p-3 bg-white rounded-xl shadow-sm text-orange-600 group-hover:scale-110 transition-transform">
+                          <Users size={24} />
+                        </div>
+                        <div>
+                          <p>Share Ke Admin</p>
+                          <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest mt-0.5">Berdasarkan PIC</p>
+                        </div>
                       </button>
                       <button
-                        onClick={() => setActiveTab("draft")}
-                        className={`flex-1 py-3 text-[11px] font-bold uppercase tracking-widest relative transition-colors ${activeTab === "draft" ? "text-orange-600 border-b-2 border-orange-600 bg-orange-50" : "text-slate-400"}`}
+                        onClick={() => setShareModal({ ...shareModal, type: 'customer' })}
+                        className="w-full p-5 bg-emerald-50 hover:bg-emerald-100 border-2 border-emerald-100 text-emerald-700 rounded-2xl font-black text-left flex items-center gap-4 transition-all group"
                       >
-                        Antrian
-                        {drafts.length > 0 && (
-                          <span className="ml-2 bg-red-500 text-white px-1.5 py-0.5 rounded-full text-[9px] min-w-[18px] inline-block text-center">
-                            {drafts.length}
-                          </span>
-                        )}
+                        <div className="p-3 bg-white rounded-xl shadow-sm text-emerald-600 group-hover:scale-110 transition-transform">
+                          <User size={24} />
+                        </div>
+                        <div>
+                          <p>Share Ke Customer</p>
+                          <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest mt-0.5">Personalized Report</p>
+                        </div>
                       </button>
                     </div>
                   )}
 
-                  {/* 3. CONTENT BODY (Scrollable Area) */}
-                  {/* min-h-0 sangat penting agar child scroll berfungsi didalam flex parent */}
-                  <div className="flex flex-1 min-h-0 flex-col sm:flex-row relative bg-slate-50">
-                    {/* --- KIRI: FORM INPUT --- */}
-                    <form
-                      onSubmit={(e) => e.preventDefault()}
-                      className={`flex-1 flex flex-col relative h-full ${editing ? "flex" : (activeTab === "draft" ? "hidden sm:flex" : "flex")}`}
-                    >
-                      {/* Scrollable Container */}
-                      <div className="flex-1 overflow-y-auto custom-scrollbar p-5 pb-32 sm:pb-28">
-                        <div className="space-y-5">
-
-                          {!isSimpleEdit && (
-                            <>
-                              {/* Input Nama (Primary) */}
-                              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-                                <div className="space-y-1">
-                                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
-                                    Nama Barang
-                                  </label>
-                                  <input
-                                    ref={nameInputRef}
-                                    autoFocus={!editing}
-                                    className="w-full text-lg font-bold text-slate-800 placeholder:text-slate-300 border-b-2 border-slate-100 focus:border-orange-500 outline-none py-2 bg-transparent transition-colors"
-                                    placeholder="Contoh: Coklat Royce..."
-                                    value={form.name}
-                                    onChange={(e) =>
-                                      setForm({ ...form, name: e.target.value })
-                                    }
-                                  />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div className="space-y-1">
-                                    <div className="flex justify-between items-center h-4">
-                                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
-                                        Jumlah
-                                      </label>
-                                    </div>
-                                    <input
-                                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-bold text-sm outline-none focus:ring-2 focus:ring-orange-100"
-                                      placeholder="1"
-                                      value={form.quantity}
-                                      onChange={(e) =>
-                                        setForm({ ...form, quantity: e.target.value })
-                                      }
-                                    />
-                                  </div>
-                                  <div className="space-y-1">
-                                    <div className="flex justify-between items-center h-4">
-                                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
-                                        Customer
-                                      </label>
-                                      <button
-                                        onClick={handleAddNewCustomer}
-                                        className="text-[10px] font-bold text-orange-500 hover:text-orange-600 flex items-center gap-0.5"
-                                      >
-                                        <Plus size={10} strokeWidth={3} />
-                                        BARU
-                                      </button>
-                                    </div>
-                                    <SearchableSelect
-                                      placeholder="Cari Customer..."
-                                      value={form.customer}
-                                      onChange={(val) => setForm({ ...form, customer: val })}
-                                      options={customerOptions}
-                                      buttonClassName="bg-slate-50 border-slate-200 font-bold focus:ring-orange-100"
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-                            </>
-                          )}
-
-                          {/* Pricing Fields - Always if simpleEdit or usageType is pricing */}
-                          {editing && (
-                            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-                              {isSimpleEdit && (
-                                <div className="mb-4 pb-4 border-b border-slate-50">
-                                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Update Harga Untuk</p>
-                                  <p className="text-sm font-bold text-slate-800">{form.name}</p>
-                                </div>
-                              )}
-                              <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1">
-                                  <label className="text-[10px] font-bold text-orange-400 uppercase tracking-widest ml-1">
-                                    Harga Asli
-                                  </label>
-                                  <div className="relative">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">Rp</span>
-                                    <input
-                                      type="text"
-                                      className="w-full bg-orange-50/50 border border-orange-100 rounded-xl pl-8 pr-3 py-2.5 font-bold text-sm outline-none focus:ring-2 focus:ring-orange-100 placeholder:text-orange-200"
-                                      placeholder="0"
-                                      value={formatRp(form.originalPrice)}
-                                      onChange={(e) =>
-                                        setForm({ ...form, originalPrice: parseRp(e.target.value) })
-                                      }
-                                    />
-                                  </div>
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest ml-1">
-                                    Harga Jastip
-                                  </label>
-                                  <div className="relative">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">Rp</span>
-                                    <input
-                                      type="text"
-                                      className="w-full bg-emerald-50/50 border border-emerald-100 rounded-xl pl-8 pr-3 py-2.5 font-bold text-sm outline-none focus:ring-2 focus:ring-emerald-100 placeholder:text-emerald-200"
-                                      placeholder="0"
-                                      value={formatRp(form.jastipPrice)}
-                                      onChange={(e) =>
-                                        setForm({ ...form, jastipPrice: parseRp(e.target.value) })
-                                      }
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-
-                          {!isSimpleEdit && (
-                            <>
-                              {/* Input Detail (Secondary) */}
-                              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div className="space-y-1">
-                                    <div className="flex justify-between items-center h-4">
-                                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
-                                        Tanggal Pengiriman
-                                      </label>
-                                    </div>
-                                    <input
-                                      type="date"
-                                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-bold text-sm outline-none focus:ring-2 focus:ring-orange-100"
-                                      value={form.shippingDate}
-                                      onChange={(e) =>
-                                        setForm({
-                                          ...form,
-                                          shippingDate: e.target.value,
-                                        })
-                                      }
-                                    />
-                                  </div>
-                                  <div className="space-y-1">
-                                    <div className="flex justify-between items-center h-4">
-                                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
-                                        PIC
-                                      </label>
-                                    </div>
-                                    <div className="relative">
-                                      <select
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-bold text-sm outline-none appearance-none focus:ring-2 focus:ring-orange-100"
-                                        value={form.pic}
-                                        onChange={(e) =>
-                                          setForm({ ...form, pic: e.target.value })
-                                        }
-                                      >
-                                        <option value="">Pilih...</option>
-                                        {PIC_OPTIONS.map((p) => (
-                                          <option key={p} value={p}>
-                                            {p}
-                                          </option>
-                                        ))}
-                                      </select>
-                                      <ChevronDown
-                                        size={14}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-                                      />
-                                    </div>
-                                  </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
-                                    Platform
-                                  </label>
-                                  <div className="flex flex-wrap gap-2">
-                                    {PLATFORM_OPTIONS.map((p) => (
-                                      <button
-                                        key={p}
-                                        onClick={() =>
-                                          setForm({ ...form, platform: p })
-                                        }
-                                        className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-all ${form.platform === p ? "bg-slate-800 text-white border-slate-800" : "bg-white text-slate-500 border-slate-200"}`}
-                                      >
-                                        {p}
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-                              </div>
-
-
-                              <details className="group bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-                                <summary className="list-none flex justify-between items-center cursor-pointer">
-                                  <span className="text-xs font-bold text-slate-500">
-                                    Catatan & Link
-                                  </span>
-                                  <Plus
-                                    size={16}
-                                    className="text-slate-400 group-open:rotate-45 transition-transform"
-                                  />
-                                </summary>
-                                <div className="mt-3 pt-3 border-t border-slate-100 space-y-3">
-                                  <input
-                                    placeholder="Link Produk..."
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-bold text-sm outline-none focus:ring-2 focus:ring-orange-100 placeholder:font-medium"
-                                    value={form.link}
-                                    onChange={(e) =>
-                                      setForm({ ...form, link: e.target.value })
-                                    }
-                                  />
-                                  <textarea
-                                    placeholder="Catatan..."
-                                    rows={2}
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-bold text-sm outline-none focus:ring-2 focus:ring-orange-100 resize-none placeholder:font-medium"
-                                    value={form.note}
-                                    onChange={(e) =>
-                                      setForm({ ...form, note: e.target.value })
-                                    }
-                                  />
-                                </div>
-                              </details>
-                            </>
-                          )}
-                        </div>
+                  {shareModal.type === 'admin' && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3 mb-6">
+                        <button onClick={() => setShareModal({ type: 'selection' })} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+                          <ChevronLeft size={20} className="text-slate-400" />
+                        </button>
+                        <h3 className="text-lg font-black text-slate-800 uppercase tracking-widest">Pilih PIC</h3>
                       </div>
-
-                      {/* BUTTON ACTION (FIXED BOTTOM) */}
-                      <div className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-200 z-20 shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
-                        {editing ? (
-                          <button
-                            type="button"
-                            onClick={handleSaveAll}
-                            disabled={isProcessing}
-                            className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white h-12 rounded-xl font-black flex items-center justify-center gap-2 shadow-lg shadow-orange-200 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale"
-                          >
-                            {isProcessing ? (
-                              <Loader2 size={20} className="animate-spin" />
-                            ) : (
-                              <Send size={20} />
-                            )}
-                            {isSimpleEdit ? "UPDATE HARGA" : "SIMPAN PERUBAHAN"}
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={addToDraft}
-                            disabled={
-                              !form.name ||
-                              !form.pic ||
-                              !form.shippingDate ||
-                              !form.customer
-                            }
-                            className="w-full bg-slate-900 text-white h-12 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-slate-300 active:scale-95 transition-all disabled:opacity-50 disabled:active:scale-100"
-                          >
-                            <ListPlus size={18} />
-                            <span className="text-sm tracking-wide">
-                              TAMBAH KE ANTRIAN
+                      <div className="max-h-[350px] overflow-y-auto pr-2 no-scrollbar space-y-3">
+                        {Array.from(new Set(items.map(i => i.pic || "Tanpa PIC"))).sort().map(pic => (
+                          <div key={pic} className="p-3 border border-slate-100 rounded-2xl space-y-2">
+                            <span className="font-bold text-slate-700 text-sm ps-1 flex items-center gap-2">
+                              <User size={14} className="text-slate-400" /> {pic}
                             </span>
-                          </button>
-                        )}
-                      </div>
-                    </form>
-
-                    {/* --- KANAN: DRAFT LIST --- */}
-                    <div
-                      className={`flex-1 flex flex-col h-full bg-slate-100 sm:border-l border-slate-200 relative ${editing ? "hidden sm:flex" : (activeTab === "input" ? "hidden sm:flex" : "flex")}`}
-                    >
-                      {/* Header Draft */}
-                      <div className="p-4 bg-white/50 border-b border-slate-200 flex justify-between items-center sticky top-0 z-10">
-                        <span className="text-xs font-black text-slate-500 uppercase tracking-widest">
-                          {editing
-                            ? "Preview"
-                            : `Daftar Antrian (${drafts.length})`}
-                        </span>
-                        {!editing && drafts.length > 0 && (
-                          <button
-                            onClick={() => setDrafts([])}
-                            className="text-[10px] text-red-500 font-bold bg-red-50 px-2 py-1 rounded hover:bg-red-100"
-                          >
-                            HAPUS SEMUA
-                          </button>
-                        )}
-                      </div>
-
-                      {/* List Draft */}
-                      <div className="flex-1 overflow-y-auto p-4 space-y-3 pb-32">
-                        {editing ? (
-                          <div className="bg-white p-5 rounded-2xl border-2 border-orange-100 shadow-sm text-center">
-                            <p className="text-xs font-bold text-orange-500 uppercase mb-2">
-                              Sedang Mengedit
-                            </p>
-                            <h3 className="text-lg font-black text-slate-800">
-                              {form.name || "..."}
-                            </h3>
+                            <div className="flex flex-wrap gap-1.5">
+                              {Array.from(new Set(items.filter(i => i.pic === pic).map(i => i.shippingDate))).sort().map(date => (
+                                  <button
+                                    key={date}
+                                    onClick={() => handleShareToAdmin(pic, date)}
+                                    className="px-3 py-1.5 bg-orange-600 text-white rounded-xl text-[9px] font-black hover:bg-orange-700 transition-colors shadow-sm"
+                                  >
+                                    {formatDateDayMonth(date)}
+                                  </button>
+                              ))}
+                            </div>
                           </div>
-                        ) : drafts.length === 0 ? (
-                          <div className="h-full flex flex-col items-center justify-center opacity-40 mt-10 sm:mt-0">
-                            <ClipboardList
-                              size={40}
-                              className="mb-2 text-slate-400"
-                            />
-                            <p className="text-xs font-bold text-slate-400 uppercase">
-                              Belum ada antrian
-                            </p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {shareModal.type === 'customer' && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3 mb-6">
+                        <button onClick={() => setShareModal({ type: 'selection' })} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+                          <ChevronLeft size={20} className="text-slate-400" />
+                        </button>
+                        <h3 className="text-lg font-black text-slate-800 uppercase tracking-widest">Pilih Customer</h3>
+                      </div>
+                      <div className="max-h-[350px] overflow-y-auto pr-2 no-scrollbar space-y-3">
+                        {Array.from(new Set(items.map(i => i.customer || "Tanpa Customer"))).sort().map(cust => (
+                          <div key={cust} className="p-3 border border-slate-100 rounded-2xl space-y-2">
+                            <span className="font-bold text-slate-700 text-sm ps-1 flex items-center gap-2">
+                              <User size={14} className="text-slate-400" /> {cust}
+                            </span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {Array.from(new Set(items.filter(i => i.customer === cust).map(i => i.shippingDate))).sort().map(date => (
+                                <button
+                                  key={date}
+                                  onClick={() => handleShareToCustomer(cust, date)}
+                                  className="px-3 py-1.5 bg-emerald-600 text-white rounded-xl text-[9px] font-black hover:bg-emerald-700 transition-colors shadow-sm"
+                                >
+                                  {formatDateDayMonth(date)}
+                                </button>
+                              ))}
+                            </div>
                           </div>
-                        ) : (
-                          drafts.map((d, i) => (
-                            <motion.div
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              key={i}
-                              className="bg-white p-3 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center group"
-                            >
-                              <div className="min-w-0 pr-2">
-                                <p className="font-bold text-slate-800 text-sm truncate">
-                                  {d.name}
-                                </p>
-                                <div className="flex gap-2 mt-1">
-                                  <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold uppercase">
-                                    {d.customer}
-                                  </span>
-                                  <span className="text-[10px] bg-orange-50 text-orange-600 px-1.5 py-0.5 rounded font-bold uppercase">
-                                    {d.quantity}
-                                  </span>
-                                </div>
-                              </div>
-                              <button
-                                onClick={() =>
-                                  setDrafts(drafts.filter((_, idx) => idx !== i))
-                                }
-                                className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </motion.div>
-                          ))
-                        )}
-                      </div>
-
-                      {/* BUTTON SIMPAN (FIXED BOTTOM) - Only for Drafts Save */}
-                      {!editing && (
-                        <div className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-200 z-20 shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
-                          <button
-                            onClick={handleSaveAll}
-                            disabled={
-                              isProcessing || drafts.length === 0
-                            }
-                            className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white h-12 rounded-xl font-black flex items-center justify-center gap-2 shadow-lg shadow-orange-200 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale"
-                          >
-                            {isProcessing ? (
-                              <Loader2 size={20} className="animate-spin" />
-                            ) : (
-                              <Send size={20} />
-                            )}
-                            SIMPAN SEMUA ({drafts.length})
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </motion.div>
-              </div>
-            )}
-          </AnimatePresence>
-
-          {/* --- SHARE MODAL --- */}
-          <AnimatePresence>
-            {isShareOpen && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  onClick={() => setIsShareOpen(false)}
-                  className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
-                />
-                <motion.div
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.9, opacity: 0 }}
-                  className="bg-white w-full max-w-md rounded-3xl shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh]"
-                >
-                  <div className="p-5 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
-                    <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                      <Share2 size={18} className="text-green-600" /> Share Laporan
-                    </h3>
-                    <button
-                      onClick={() => setIsShareOpen(false)}
-                      className="text-slate-400 hover:text-slate-600"
-                    >
-                      <X size={20} />
-                    </button>
-                  </div>
-
-                  <div className="p-5 space-y-5 overflow-y-auto">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase">
-                          Tanggal Pengiriman
-                        </label>
-                        <select
-                          className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold"
-                          value={shareConfig.date}
-                          onChange={(e) =>
-                            setShareConfig({ ...shareConfig, date: e.target.value })
-                          }
-                        >
-                          <option value="">Semua</option>
-                          {uniqueDates.map((d) => (
-                            <option key={d} value={d}>
-                              {formatAndAddYear(d)}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase">
-                          PIC
-                        </label>
-                        <select
-                          className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold"
-                          value={shareConfig.pic}
-                          onChange={(e) =>
-                            setShareConfig({ ...shareConfig, pic: e.target.value })
-                          }
-                        >
-                          <option value="">Semua</option>
-                          {PIC_OPTIONS.map((p) => (
-                            <option key={p} value={p}>
-                              {p}
-                            </option>
-                          ))}
-                        </select>
+                        ))}
                       </div>
                     </div>
-
-                    <div className="bg-slate-800 p-4 rounded-xl relative overflow-hidden">
-                      <div className="absolute top-0 right-0 bg-green-500 text-white text-[9px] font-bold px-2 py-1 rounded-bl-lg z-10">
-                        WHATSAPP PREVIEW
-                      </div>
-                      <textarea
-                        className="w-full bg-transparent text-[10px] text-slate-300 font-mono whitespace-pre-wrap min-h-48 overflow-y-auto custom-scrollbar border-none focus:ring-0 resize-none outline-none"
-                        value={shareMessage}
-                        onChange={(e) => setShareMessage(e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="p-4 border-t border-slate-100">
-                    <button
-                      onClick={handleSendWhatsapp}
-                      className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-green-200 transition-all active:scale-95"
-                    >
-                      Kirim ke WhatsApp
-                    </button>
-                  </div>
-                </motion.div>
-              </div>
-            )}
-          </AnimatePresence>
+                  )}
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
       {/* Lightbox Preview */}
       <AnimatePresence>
@@ -1899,7 +1905,7 @@ export default function PurchasesPage() {
                 </motion.button>
               </>
             )}
-            
+
             <motion.div
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -1909,10 +1915,10 @@ export default function PurchasesPage() {
             >
               <div className="bg-white/5 backdrop-blur-sm border border-white/10 p-2 rounded-[2.5rem] shadow-2xl overflow-hidden relative">
                 <AnimatePresence mode="wait">
-                  <motion.img 
+                  <motion.img
                     key={selectedPhoto.url}
-                    src={selectedPhoto.url} 
-                    alt="Preview" 
+                    src={selectedPhoto.url}
+                    alt="Preview"
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 1.05 }}
@@ -1923,10 +1929,10 @@ export default function PurchasesPage() {
                       if (info.offset.x > 100) navigateLightbox('prev');
                       else if (info.offset.x < -100) navigateLightbox('next');
                     }}
-                    className="w-full h-auto max-h-[75vh] object-contain rounded-[2rem] cursor-grab active:cursor-grabbing" 
+                    className="w-full h-auto max-h-[75vh] object-contain rounded-[2rem] cursor-grab active:cursor-grabbing"
                   />
                 </AnimatePresence>
-                
+
                 {/* Image Index Indicator */}
                 <div className="absolute top-6 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-black/40 backdrop-blur-md rounded-full border border-white/10">
                   <span className="text-white/90 text-xs font-black tracking-widest uppercase">
@@ -1934,7 +1940,7 @@ export default function PurchasesPage() {
                   </span>
                 </div>
               </div>
-              
+
               <div className="flex items-center justify-between px-6 py-4 bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl">
                 <div className="flex items-center gap-4">
                   <div className="p-3 bg-white/10 rounded-2xl">
@@ -1950,9 +1956,9 @@ export default function PurchasesPage() {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <a 
-                    href={selectedPhoto.url} 
-                    target="_blank" 
+                  <a
+                    href={selectedPhoto.url}
+                    target="_blank"
                     rel="noreferrer"
                     className="flex items-center gap-2 px-4 py-2 bg-white text-slate-900 rounded-xl text-sm font-black hover:bg-slate-50 transition-colors shadow-lg"
                   >
