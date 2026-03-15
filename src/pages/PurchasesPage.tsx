@@ -452,15 +452,17 @@ export default function PurchasesPage() {
     Object.entries(byCustomer).forEach(([customer, customerItems]) => {
       message += `👤 *${customer.toUpperCase()}*\n`;
       customerItems.forEach(item => {
-        message += `• ${item.name} (Qty: ${item.quantity})\n`;
-        if (item.link) message += `  🔗 ${item.link}\n`;
-        if (item.note) message += `  📝 ${item.note}\n`;
+        const price = Number(item.jastipPrice) || 0;
+        message += `${item.isDone ? "✅" : "🔴"} ${item.name} (${item.quantity})`;
+        if (price) message += ` [Rp${formatRp(price)}]`;
+        message += `\n`;
+        if (item.note) message += `   └ _${item.note}_\n`;
       });
       message += `\n`;
     });
 
     const encoded = encodeURIComponent(message);
-    window.open(`https://wa.me/?text=${encoded}`, '_blank');
+    window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
     setShareModal(null);
   };
 
@@ -481,7 +483,7 @@ export default function PurchasesPage() {
     message += `Terima kasih sudah belanja! 🙏`;
 
     const encoded = encodeURIComponent(message);
-    window.open(`https://wa.me/?text=${encoded}`, '_blank');
+    window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
     setShareModal(null);
   };
   const processedItems = useMemo(() => {
