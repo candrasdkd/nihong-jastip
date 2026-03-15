@@ -8,6 +8,7 @@ import {
   onSnapshot,
   query,
   orderBy,
+  setDoc,
   writeBatch,
 } from "firebase/firestore";
 import { db } from "../lib/firebase";
@@ -38,8 +39,9 @@ import {
   ChevronDown,
   MoreHorizontal,
   Image as ImageIcon,
-  Upload,
   Save,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { formatAndAddYear } from "../utils/helpers";
 import { compressImage } from "../utils/image";
@@ -47,8 +49,8 @@ import SearchableSelect from "../components/ui/SearchableSelect";
 
 // --- TYPES ---
 import { PIC_OPTIONS, PLATFORM_OPTIONS } from "../utils/constants";
-import { PurchaseItem, ShareConfig, PurchaseCustomer } from "../types";
-import { listenPurchaseCustomers, addPurchaseCustomer } from "../services/purchaseCustomersFirebase";
+import { PurchaseItem, ShareConfig, Customer as PurchaseCustomer } from "../types";
+import { listenCustomers as listenPurchaseCustomers, addCustomer as addPurchaseCustomer } from "../services/customersFirebase";
 
 // --- SUB-COMPONENTS ---
 
@@ -136,8 +138,6 @@ export default function PurchasesPage() {
     note: "",
     shippingDate: "",
     isDone: false,
-    imageUrl: "",
-    usageType: "checking" as "checking" | "pricing",
     originalPrice: "" as number | "",
     jastipPrice: "" as number | "",
   };
@@ -153,11 +153,13 @@ export default function PurchasesPage() {
   const [shareMessage, setShareMessage] = useState("");
 
   const [customers, setCustomers] = useState<PurchaseCustomer[]>([]);
+  const [datePhotos, setDatePhotos] = useState<Record<string, string[]>>({});
+  const [uploadingForDate, setUploadingForDate] = useState<string | null>(null); // key format: "date_customer"
+  const fileInputRefForDate = useRef<HTMLInputElement>(null);
+  const [activeUploadDate, setActiveUploadDate] = useState<{ date: string; customer: string } | null>(null);
+  const [selectedPhoto, setSelectedPhoto] = useState<{ url: string; date: string; customer: string } | null>(null);
 
   const nameInputRef = useRef<HTMLInputElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     const unsub = listenPurchaseCustomers((rows) => setCustomers(rows));
@@ -184,58 +186,20 @@ export default function PurchasesPage() {
 
     try {
       setIsProcessing(true);
-      await addPurchaseCustomer(name.trim());
+      await addPurchaseCustomer({
+        nama: name.trim(),
+        alamat: "",
+        telpon: "",
+      });
       setForm(prev => ({ ...prev, customer: name.trim() }));
     } catch (e) {
       console.error(e);
       alert("Gagal menambah customer.");
     } finally {
-      setIsProcessing(true);
-      setTimeout(() => setIsProcessing(false), 500);
+      setIsProcessing(false);
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsUploading(true);
-    try {
-      // Compress image before upload
-      const compressedBlob = await compressImage(file, 1200, 1200, 0.7);
-
-      const cloudName = (import.meta as any).env.VITE_CLOUDINARY_CLOUD_NAME;
-      const uploadPreset = (import.meta as any).env.VITE_CLOUDINARY_UPLOAD_PRESET;
-
-      if (!cloudName || !uploadPreset || cloudName === "your_cloud_name") {
-        alert("Konfigurasi Cloudinary belum lengkap di .env");
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append("file", compressedBlob, file.name);
-      formData.append("upload_preset", uploadPreset);
-
-      const res = await fetch(
-        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-      const data = await res.json();
-      if (data.secure_url) {
-        setForm((prev) => ({ ...prev, imageUrl: data.secure_url }));
-      } else if (data.error) {
-        alert(`Cloudinary Error: ${data.error.message}`);
-      }
-    } catch (err) {
-      console.error("Upload error:", err);
-      alert("Gagal mengunggah gambar. Pastikan koneksi internet oke dan setting Cloudinary benar.");
-    } finally {
-      setIsUploading(false);
-    }
-  };
 
   // --- EFFECT ---
   useEffect(() => {
@@ -255,6 +219,19 @@ export default function PurchasesPage() {
     return () => unsub();
   }, [sortOrder]);
 
+  // Photo Listener for all dates
+  useEffect(() => {
+    const q = query(collection(db, "purchasePhotos"));
+    const unsub = onSnapshot(q, (snapshot) => {
+      const photos: Record<string, string[]> = {};
+      snapshot.docs.forEach((d) => {
+        photos[d.id] = d.data().urls || [];
+      });
+      setDatePhotos(photos);
+    });
+    return () => unsub();
+  }, []);
+
   // --- ACTIONS ---
   const handleBulkSave = async () => {
     setIsProcessing(true);
@@ -269,8 +246,8 @@ export default function PurchasesPage() {
           if (item.originalPrice !== prices.originalPrice || item.jastipPrice !== prices.jastipPrice) {
             const docRef = doc(db, "purchases", id);
             batch.update(docRef, {
-              originalPrice: prices.originalPrice,
-              jastipPrice: prices.jastipPrice,
+              originalPrice: prices.originalPrice === "" ? null : prices.originalPrice,
+              jastipPrice: prices.jastipPrice === "" ? null : prices.jastipPrice,
             });
             hasChanges = true;
           }
@@ -295,8 +272,8 @@ export default function PurchasesPage() {
     if (!form.name || !form.pic || !form.shippingDate || !form.customer) return;
     const cleanedItem = {
       ...form,
-      originalPrice: form.originalPrice === "" ? undefined : form.originalPrice,
-      jastipPrice: form.jastipPrice === "" ? undefined : form.jastipPrice,
+      originalPrice: form.originalPrice === "" ? null : form.originalPrice,
+      jastipPrice: form.jastipPrice === "" ? null : form.jastipPrice,
     } as Omit<PurchaseItem, "id">;
     setDrafts((prev) => [...prev, cleanedItem]);
     setForm((prev) => ({
@@ -305,8 +282,8 @@ export default function PurchasesPage() {
       shippingDate: prev.shippingDate,
       customer: prev.customer,
       platform: prev.platform,
-      usageType: prev.usageType,
     }));
+    setActiveTab("draft");
     setTimeout(() => nameInputRef.current?.focus(), 100);
   };
 
@@ -315,8 +292,8 @@ export default function PurchasesPage() {
     try {
       const cleanedForm = {
         ...form,
-        originalPrice: form.originalPrice === "" ? undefined : form.originalPrice,
-        jastipPrice: form.jastipPrice === "" ? undefined : form.jastipPrice,
+        originalPrice: form.originalPrice === "" ? null : form.originalPrice,
+        jastipPrice: form.jastipPrice === "" ? null : form.jastipPrice,
       };
       if (editing) {
         // @ts-ignore
@@ -371,6 +348,98 @@ export default function PurchasesPage() {
     setDrafts([]);
     setActiveTab("input");
   };
+
+  const handlePhotoUploadForDate = async (e: React.ChangeEvent<HTMLInputElement>, date: string, customer: string) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const key = `${date}_${customer}`;
+    if ((datePhotos[key]?.length || 0) >= 8) {
+      alert("Maksimal 8 foto per tanggal & customer.");
+      return;
+    }
+
+    setUploadingForDate(key);
+    try {
+      const compressedBlob = await compressImage(file);
+      const cloudName = (import.meta as any).env.VITE_CLOUDINARY_CLOUD_NAME;
+      const uploadPreset = (import.meta as any).env.VITE_CLOUDINARY_UPLOAD_PRESET;
+
+      if (!cloudName || !uploadPreset || cloudName === "your_cloud_name") {
+        alert("Konfigurasi Cloudinary belum lengkap di .env");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("file", compressedBlob, file.name);
+      formData.append("upload_preset", uploadPreset);
+
+      const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+      const data = await res.json();
+      if (data.secure_url) {
+        const currentUrls = datePhotos[key] || [];
+        const newUrls = [...currentUrls, data.secure_url];
+        await setDoc(doc(db, "purchasePhotos", key), { urls: newUrls });
+      } else if (data.error) {
+        alert(`Cloudinary Error: ${data.error.message}`);
+      }
+    } catch (err) {
+      console.error("Upload error:", err);
+      alert("Gagal mengunggah gambar.");
+    } finally {
+      setUploadingForDate(null);
+    }
+  };
+
+  const handleDeletePhotoForDate = async (date: string, customer: string, urlToDelete: string) => {
+    if (!confirm("Hapus foto ini?")) return;
+    const key = `${date}_${customer}`;
+    try {
+      const currentUrls = datePhotos[key] || [];
+      const newUrls = currentUrls.filter(u => u !== urlToDelete);
+      await setDoc(doc(db, "purchasePhotos", key), { urls: newUrls });
+      // Close lightbox if the deleted photo was active
+      if (selectedPhoto?.url === urlToDelete) {
+        setSelectedPhoto(null);
+      }
+    } catch (err) {
+      console.error("Delete photo error:", err);
+      alert("Gagal menghapus foto.");
+    }
+  };
+
+  const navigateLightbox = (direction: 'next' | 'prev') => {
+    if (!selectedPhoto) return;
+    const key = `${selectedPhoto.date}_${selectedPhoto.customer}`;
+    const urls = datePhotos[key] || [];
+    if (urls.length <= 1) return;
+
+    const currentIndex = urls.indexOf(selectedPhoto.url);
+    let nextIndex;
+    if (direction === 'next') {
+      nextIndex = (currentIndex + 1) % urls.length;
+    } else {
+      nextIndex = (currentIndex - 1 + urls.length) % urls.length;
+    }
+    setSelectedPhoto({ ...selectedPhoto, url: urls[nextIndex] });
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!selectedPhoto) return;
+      if (e.key === 'ArrowRight') navigateLightbox('next');
+      if (e.key === 'ArrowLeft') navigateLightbox('prev');
+      if (e.key === 'Escape') setSelectedPhoto(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedPhoto, datePhotos]);
 
   // --- DATA PROCESSING ---
   const processedItems = useMemo(() => {
@@ -712,7 +781,7 @@ export default function PurchasesPage() {
                       </span>
                     </div>
                     {/* Progress Bar */}
-                    <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                    <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden mb-4">
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${progress}%` }}
@@ -744,11 +813,66 @@ export default function PurchasesPage() {
                                 key={customer}
                                 className="bg-white rounded-2xl p-1 shadow-sm border border-slate-200/60 overflow-hidden"
                               >
-                                <div className="px-3 py-2 bg-slate-50/50 border-b border-slate-100 flex items-center gap-2">
-                                  <User size={12} className="text-slate-400" />
-                                  <h4 className="text-xs font-black text-slate-600 uppercase tracking-wide">
-                                    {customer}
-                                  </h4>
+                                <div className="px-3 py-2 bg-slate-50/50 border-b border-slate-100 flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2">
+                                    <User size={12} className="text-slate-400" />
+                                    <h4 className="text-xs font-black text-slate-600 uppercase tracking-wide">
+                                      {customer}
+                                    </h4>
+                                  </div>
+                                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
+                                    {datePhotos[`${date}_${customer}`]?.length || 0}/8 Foto
+                                  </span>
+                                </div>
+
+                                {/* Customer Photos Gallery */}
+                                <div className="px-2 py-3 bg-white border-b border-slate-100">
+                                  <div className="flex items-center gap-3 overflow-x-auto no-scrollbar">
+                                    {(datePhotos[`${date}_${customer}`] || []).map((url, idx) => (
+                                      <motion.div 
+                                        key={idx} 
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        className="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-white shadow-sm shrink-0 group/photo cursor-zoom-in"
+                                      >
+                                        <img 
+                                          src={url} 
+                                          alt={`${customer} - ${idx}`} 
+                                          className="w-full h-full object-cover"
+                                          onClick={() => setSelectedPhoto({ url, date, customer })}
+                                        />
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeletePhotoForDate(date, customer, url);
+                                          }}
+                                          className="absolute top-1 right-1 bg-white/90 p-1.5 rounded-lg text-red-500 shadow-sm opacity-0 group-hover/photo:opacity-100 transition-opacity"
+                                        >
+                                          <Trash2 size={10} />
+                                        </button>
+                                      </motion.div>
+                                    ))}
+
+                                    {(!datePhotos[`${date}_${customer}`] || datePhotos[`${date}_${customer}`].length < 8) && (
+                                      <button
+                                        onClick={() => {
+                                          setActiveUploadDate({ date, customer });
+                                          fileInputRefForDate.current?.click();
+                                        }}
+                                        disabled={uploadingForDate === `${date}_${customer}`}
+                                        className="w-20 h-20 rounded-xl border-2 border-dashed border-slate-100 flex flex-col items-center justify-center text-slate-400 hover:border-orange-300 hover:text-orange-500 transition-all shrink-0 bg-slate-50/50"
+                                      >
+                                        {uploadingForDate === `${date}_${customer}` ? (
+                                          <Loader2 size={18} className="animate-spin text-orange-400" />
+                                        ) : (
+                                          <>
+                                            <ImageIcon size={18} strokeWidth={2.5} />
+                                            <span className="text-[7px] font-black mt-1 uppercase">UPLOAD</span>
+                                          </>
+                                        )}
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
                                 <div className="divide-y divide-slate-100">
                                   {list.map((item) => (
@@ -771,23 +895,6 @@ export default function PurchasesPage() {
                                           )}
                                         </button>
 
-                                        {item.imageUrl && (
-                                          <div
-                                            className="w-12 h-12 rounded-lg overflow-hidden border border-slate-100 shrink-0 cursor-pointer"
-                                            onClick={() =>
-                                              window.open(
-                                                item.imageUrl,
-                                                "_blank"
-                                              )
-                                            }
-                                          >
-                                            <img
-                                              src={item.imageUrl}
-                                              className="w-full h-full object-cover"
-                                              alt={item.name}
-                                            />
-                                          </div>
-                                        )}
 
                                         <div className="flex-1 min-w-0 pt-0.5">
                                           <div className="flex justify-between items-start">
@@ -823,8 +930,6 @@ export default function PurchasesPage() {
                                                       item.platform || "",
                                                     link: item.link || "",
                                                     note: item.note || "",
-                                                    imageUrl: item.imageUrl || "",
-                                                    usageType: item.usageType || "checking",
                                                     originalPrice: item.originalPrice ?? "",
                                                     jastipPrice: item.jastipPrice ?? "",
                                                   });
@@ -846,16 +951,13 @@ export default function PurchasesPage() {
                                           </div>
 
                                           <div className="flex flex-wrap items-center gap-2 mt-2">
-                                            <Badge color={item.usageType === "pricing" ? "blue" : "orange"}>
+                                            <Badge color="orange">
                                               {item.quantity}
                                             </Badge>
                                             {item.platform && (
                                               <Badge color="slate">
                                                 {item.platform}
                                               </Badge>
-                                            )}
-                                            {item.usageType === "pricing" && (
-                                              <Badge color="blue">PRICING</Badge>
                                             )}
                                           </div>
 
@@ -987,6 +1089,30 @@ export default function PurchasesPage() {
                       <Badge color="blue">{data.total} ITEMS</Badge>
                     </div>
                   </div>
+                  
+                  {/* Date Summary (Pricing View) */}
+                  <div className="px-5 py-4 bg-slate-50 border-b border-slate-200">
+                    <div className="flex flex-wrap gap-2 items-center">
+                      {(() => {
+                        const dateItems = processedItems.filter(i => i.shippingDate === date);
+                        const totalOriginal = dateItems.reduce((sum, i) => sum + (Number(i.originalPrice) || 0), 0);
+                        const totalJastip = dateItems.reduce((sum, i) => sum + (Number(i.jastipPrice) || 0), 0);
+                        return (
+                          <>
+                            <div className="bg-orange-50 px-2 py-1 rounded-lg border border-orange-100 flex items-center gap-1.5">
+                              <span className="text-[9px] font-bold text-orange-400 uppercase">Total Asli</span>
+                              <span className="text-[11px] font-black text-orange-600">Rp{formatRp(totalOriginal)}</span>
+                            </div>
+                            <div className="bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100 flex items-center gap-1.5">
+                              <span className="text-[9px] font-bold text-emerald-400 uppercase">Total Jastip</span>
+                              <span className="text-[11px] font-black text-emerald-600">Rp{formatRp(totalJastip)}</span>
+                            </div>
+                          </>
+                        );
+                      })()}
+                      <Badge color="blue">{data.total} ITEMS</Badge>
+                    </div>
+                  </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                       <thead>
@@ -1015,11 +1141,46 @@ export default function PurchasesPage() {
                               {/* Customer Sub-header row */}
                               <tr className="bg-slate-50/50">
                                 <td colSpan={2} className="px-5 py-2">
-                                  <div className="flex items-center gap-2">
-                                    <User size={12} className="text-slate-400" />
-                                    <span className="text-[10px] font-black text-slate-800 uppercase tracking-widest">
-                                      {customer}
-                                    </span>
+                                  <div className="flex flex-col gap-2 py-1">
+                                    <div className="flex items-center gap-2">
+                                      <User size={12} className="text-slate-400" />
+                                      <span className="text-[10px] font-black text-slate-800 uppercase tracking-widest">
+                                        {customer}
+                                      </span>
+                                    </div>
+                                    
+                                    {/* Pricing View Customer Photos */}
+                                    <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+                                      {(datePhotos[`${date}_${customer}`] || []).map((url, idx) => (
+                                        <motion.div 
+                                          key={idx}
+                                          whileHover={{ scale: 1.1 }}
+                                          className="relative w-10 h-10 rounded-lg overflow-hidden border border-white shadow-sm shrink-0 cursor-zoom-in"
+                                        >
+                                          <img 
+                                            src={url} 
+                                            className="w-full h-full object-cover"
+                                            onClick={() => setSelectedPhoto({ url, date, customer })}
+                                          />
+                                        </motion.div>
+                                      ))}
+                                      {(!datePhotos[`${date}_${customer}`] || datePhotos[`${date}_${customer}`].length < 8) && (
+                                        <button 
+                                          onClick={() => {
+                                            setActiveUploadDate({ date, customer });
+                                            fileInputRefForDate.current?.click();
+                                          }}
+                                          disabled={uploadingForDate === `${date}_${customer}`}
+                                          className="w-10 h-10 rounded-lg border border-dashed border-slate-200 flex items-center justify-center text-slate-300 hover:text-orange-500 hover:bg-white transition-colors shrink-0"
+                                        >
+                                          {uploadingForDate === `${date}_${customer}` ? (
+                                            <Loader2 size={12} className="animate-spin" />
+                                          ) : (
+                                            <ImageIcon size={14} />
+                                          )}
+                                        </button>
+                                      )}
+                                    </div>
                                   </div>
                                 </td>
                                 <td className="px-5 py-2">
@@ -1128,8 +1289,6 @@ export default function PurchasesPage() {
                                               platform: item.platform || "",
                                               link: item.link || "",
                                               note: item.note || "",
-                                              imageUrl: item.imageUrl || "",
-                                              usageType: item.usageType || "checking",
                                               originalPrice: item.originalPrice ?? "",
                                               jastipPrice: item.jastipPrice ?? "",
                                             });
@@ -1158,23 +1317,23 @@ export default function PurchasesPage() {
               ))}
             </div>
           )}
+        </div>
 
-
-          {/* --- FAB --- */}
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => setIsOpen(true)}
-            className="fixed bottom-20 right-6 h-14 w-14 bg-slate-900 text-white rounded-full shadow-xl shadow-slate-900/30 flex items-center justify-center active:scale-95 transition-transform z-40"
-          >
-            <Plus size={28} strokeWidth={2.5} />
-          </motion.button>
+        {/* --- FAB --- */}
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => setIsOpen(true)}
+          className="fixed bottom-20 right-6 h-14 w-14 bg-slate-900 text-white rounded-full shadow-xl shadow-slate-900/30 flex items-center justify-center active:scale-95 transition-transform z-40"
+        >
+          <Plus size={28} strokeWidth={2.5} />
+        </motion.button>
 
 
           {/* --- MODAL INPUT --- */}
           <AnimatePresence>
             {isOpen && (
-              <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
+              <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 sm:mt-0">
                 {/* Backdrop */}
                 <motion.div
                   initial={{ opacity: 0 }}
@@ -1240,42 +1399,15 @@ export default function PurchasesPage() {
                   <div className="flex flex-1 min-h-0 flex-col sm:flex-row relative bg-slate-50">
                     {/* --- KIRI: FORM INPUT --- */}
                     <form
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        if (editing) {
-                          handleSaveAll();
-                        } else if (form.name && form.pic && form.shippingDate && form.customer) {
-                          addToDraft();
-                        }
-                      }}
+                      onSubmit={(e) => e.preventDefault()}
                       className={`flex-1 flex flex-col relative h-full ${editing ? "flex" : (activeTab === "draft" ? "hidden sm:flex" : "flex")}`}
                     >
                       {/* Scrollable Container */}
                       <div className="flex-1 overflow-y-auto custom-scrollbar p-5 pb-32 sm:pb-28">
                         <div className="space-y-5">
+
                           {!isSimpleEdit && (
                             <>
-                              {/* Tipe Kegunaan */}
-                              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
-                                  Tipe Kegunaan
-                                </label>
-                                <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl">
-                                  <button
-                                    onClick={() => setForm({ ...form, usageType: "checking" })}
-                                    className={`py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${form.usageType === "checking" ? "bg-white text-slate-800 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
-                                  >
-                                    Pengecekan (Checklist)
-                                  </button>
-                                  <button
-                                    onClick={() => setForm({ ...form, usageType: "pricing" })}
-                                    className={`py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${form.usageType === "pricing" ? "bg-white text-slate-800 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
-                                  >
-                                    Penentuan Harga
-                                  </button>
-                                </div>
-                              </div>
-
                               {/* Input Nama (Primary) */}
                               <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
                                 <div className="space-y-1">
@@ -1296,9 +1428,11 @@ export default function PurchasesPage() {
 
                                 <div className="grid grid-cols-2 gap-3">
                                   <div className="space-y-1">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
-                                      Jumlah
-                                    </label>
+                                    <div className="flex justify-between items-center h-4">
+                                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
+                                        Jumlah
+                                      </label>
+                                    </div>
                                     <input
                                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-bold text-sm outline-none focus:ring-2 focus:ring-orange-100"
                                       placeholder="1"
@@ -1309,7 +1443,7 @@ export default function PurchasesPage() {
                                     />
                                   </div>
                                   <div className="space-y-1">
-                                    <div className="flex justify-between items-center mb-1">
+                                    <div className="flex justify-between items-center h-4">
                                       <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
                                         Customer
                                       </label>
@@ -1326,6 +1460,7 @@ export default function PurchasesPage() {
                                       value={form.customer}
                                       onChange={(val) => setForm({ ...form, customer: val })}
                                       options={customerOptions}
+                                      buttonClassName="bg-slate-50 border-slate-200 font-bold focus:ring-orange-100"
                                     />
                                   </div>
                                 </div>
@@ -1334,7 +1469,7 @@ export default function PurchasesPage() {
                           )}
 
                           {/* Pricing Fields - Always if simpleEdit or usageType is pricing */}
-                          {(isSimpleEdit || form.usageType === "pricing") && (
+                          {editing && (
                             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
                               {isSimpleEdit && (
                                 <div className="mb-4 pb-4 border-b border-slate-50">
@@ -1387,12 +1522,14 @@ export default function PurchasesPage() {
                               <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
                                 <div className="grid grid-cols-2 gap-3">
                                   <div className="space-y-1">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
-                                      Tanggal
-                                    </label>
+                                    <div className="flex justify-between items-center h-4">
+                                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
+                                        Tanggal Pengiriman
+                                      </label>
+                                    </div>
                                     <input
                                       type="date"
-                                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-bold text-sm outline-none"
+                                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-bold text-sm outline-none focus:ring-2 focus:ring-orange-100"
                                       value={form.shippingDate}
                                       onChange={(e) =>
                                         setForm({
@@ -1403,12 +1540,14 @@ export default function PurchasesPage() {
                                     />
                                   </div>
                                   <div className="space-y-1">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
-                                      PIC
-                                    </label>
+                                    <div className="flex justify-between items-center h-4">
+                                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
+                                        PIC
+                                      </label>
+                                    </div>
                                     <div className="relative">
                                       <select
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-bold text-sm outline-none appearance-none"
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-bold text-sm outline-none appearance-none focus:ring-2 focus:ring-orange-100"
                                         value={form.pic}
                                         onChange={(e) =>
                                           setForm({ ...form, pic: e.target.value })
@@ -1449,62 +1588,6 @@ export default function PurchasesPage() {
                                 </div>
                               </div>
 
-                              {/* Optional */}
-                              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-                                <div className="space-y-2">
-                                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
-                                    Foto Produk
-                                  </label>
-                                  <div className="flex items-center gap-4">
-                                    {form.imageUrl ? (
-                                      <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-200">
-                                        <img
-                                          src={form.imageUrl}
-                                          alt="Preview"
-                                          className="w-full h-full object-cover"
-                                        />
-                                        <button
-                                          onClick={() =>
-                                            setForm({ ...form, imageUrl: "" })
-                                          }
-                                          className="absolute top-1 right-1 bg-white/80 p-1 rounded-full text-red-500"
-                                        >
-                                          <X size={12} />
-                                        </button>
-                                      </div>
-                                    ) : (
-                                      <button
-                                        onClick={() => fileInputRef.current?.click()}
-                                        disabled={isUploading}
-                                        className="w-20 h-20 rounded-xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 hover:border-orange-400 hover:text-orange-400 transition-colors"
-                                      >
-                                        {isUploading ? (
-                                          <Loader2 size={24} className="animate-spin" />
-                                        ) : (
-                                          <>
-                                            <ImageIcon size={24} />
-                                            <span className="text-[9px] font-bold mt-1">
-                                              UPLOAD
-                                            </span>
-                                          </>
-                                        )}
-                                      </button>
-                                    )}
-                                    <input
-                                      type="file"
-                                      ref={fileInputRef}
-                                      className="hidden"
-                                      accept="image/*"
-                                      onChange={handleFileUpload}
-                                    />
-                                    <div className="flex-1">
-                                      <p className="text-[10px] text-slate-400">
-                                        Unggah foto untuk memudahkan pencarian barang saat di toko.
-                                      </p>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
 
                               <details className="group bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
                                 <summary className="list-none flex justify-between items-center cursor-pointer">
@@ -1519,7 +1602,7 @@ export default function PurchasesPage() {
                                 <div className="mt-3 pt-3 border-t border-slate-100 space-y-3">
                                   <input
                                     placeholder="Link Produk..."
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm"
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-bold text-sm outline-none focus:ring-2 focus:ring-orange-100 placeholder:font-medium"
                                     value={form.link}
                                     onChange={(e) =>
                                       setForm({ ...form, link: e.target.value })
@@ -1528,7 +1611,7 @@ export default function PurchasesPage() {
                                   <textarea
                                     placeholder="Catatan..."
                                     rows={2}
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm resize-none"
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-bold text-sm outline-none focus:ring-2 focus:ring-orange-100 resize-none placeholder:font-medium"
                                     value={form.note}
                                     onChange={(e) =>
                                       setForm({ ...form, note: e.target.value })
@@ -1545,7 +1628,8 @@ export default function PurchasesPage() {
                       <div className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-200 z-20 shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
                         {editing ? (
                           <button
-                            type="submit"
+                            type="button"
+                            onClick={handleSaveAll}
                             disabled={isProcessing}
                             className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white h-12 rounded-xl font-black flex items-center justify-center gap-2 shadow-lg shadow-orange-200 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale"
                           >
@@ -1558,7 +1642,8 @@ export default function PurchasesPage() {
                           </button>
                         ) : (
                           <button
-                            type="submit"
+                            type="button"
+                            onClick={addToDraft}
                             disabled={
                               !form.name ||
                               !form.pic ||
@@ -1711,7 +1796,7 @@ export default function PurchasesPage() {
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <label className="text-[10px] font-bold text-slate-400 uppercase">
-                          Tanggal
+                          Tanggal Pengiriman
                         </label>
                         <select
                           className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold"
@@ -1773,8 +1858,124 @@ export default function PurchasesPage() {
               </div>
             )}
           </AnimatePresence>
-        </div>
       </div>
+      {/* Lightbox Preview */}
+      <AnimatePresence>
+        {selectedPhoto && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSelectedPhoto(null)}
+            className="fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur-md flex items-center justify-center p-4 sm:p-10"
+          >
+            <motion.button
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              onClick={() => setSelectedPhoto(null)}
+              className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 text-white rounded-2xl transition-colors z-[110]"
+            >
+              <X size={24} />
+            </motion.button>
+
+            {/* Navigation Buttons */}
+            {datePhotos[`${selectedPhoto.date}_${selectedPhoto.customer}`]?.length > 1 && (
+              <>
+                <motion.button
+                  initial={{ x: -20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  onClick={(e) => { e.stopPropagation(); navigateLightbox('prev'); }}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 p-4 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors z-[110] backdrop-blur-md border border-white/10"
+                >
+                  <ChevronLeft size={32} />
+                </motion.button>
+                <motion.button
+                  initial={{ x: 20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  onClick={(e) => { e.stopPropagation(); navigateLightbox('next'); }}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-4 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors z-[110] backdrop-blur-md border border-white/10"
+                >
+                  <ChevronRight size={32} />
+                </motion.button>
+              </>
+            )}
+            
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative max-w-5xl w-full max-h-full flex flex-col gap-4"
+            >
+              <div className="bg-white/5 backdrop-blur-sm border border-white/10 p-2 rounded-[2.5rem] shadow-2xl overflow-hidden relative">
+                <AnimatePresence mode="wait">
+                  <motion.img 
+                    key={selectedPhoto.url}
+                    src={selectedPhoto.url} 
+                    alt="Preview" 
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 1.05 }}
+                    transition={{ duration: 0.2 }}
+                    drag="x"
+                    dragConstraints={{ left: 0, right: 0 }}
+                    onDragEnd={(_, info) => {
+                      if (info.offset.x > 100) navigateLightbox('prev');
+                      else if (info.offset.x < -100) navigateLightbox('next');
+                    }}
+                    className="w-full h-auto max-h-[75vh] object-contain rounded-[2rem] cursor-grab active:cursor-grabbing" 
+                  />
+                </AnimatePresence>
+                
+                {/* Image Index Indicator */}
+                <div className="absolute top-6 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-black/40 backdrop-blur-md rounded-full border border-white/10">
+                  <span className="text-white/90 text-xs font-black tracking-widest uppercase">
+                    FOTO {(datePhotos[`${selectedPhoto.date}_${selectedPhoto.customer}`]?.indexOf(selectedPhoto.url) || 0) + 1} DARI {datePhotos[`${selectedPhoto.date}_${selectedPhoto.customer}`]?.length || 0}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between px-6 py-4 bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-white/10 rounded-2xl">
+                    <User size={24} className="text-white" />
+                  </div>
+                  <div>
+                    <p className="text-white font-black text-lg tracking-tight uppercase">
+                      {selectedPhoto.customer}
+                    </p>
+                    <p className="text-white/50 text-xs font-bold uppercase tracking-widest mt-0.5">
+                      Shipping: {formatAndAddYear(selectedPhoto.date)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <a 
+                    href={selectedPhoto.url} 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className="flex items-center gap-2 px-4 py-2 bg-white text-slate-900 rounded-xl text-sm font-black hover:bg-slate-50 transition-colors shadow-lg"
+                  >
+                    <ExternalLink size={16} /> BUKA TAB BARU
+                  </a>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <input
+        type="file"
+        ref={fileInputRefForDate}
+        className="hidden"
+        accept="image/*"
+        onChange={(e) => {
+          if (activeUploadDate) {
+            handlePhotoUploadForDate(e, activeUploadDate.date, activeUploadDate.customer);
+          }
+        }}
+      />
     </div>
   );
 }

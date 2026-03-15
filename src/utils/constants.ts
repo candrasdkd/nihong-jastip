@@ -26,7 +26,7 @@ export const BG = "#f8f8f6";
 
 export const DONE_SET = new Set(["Selesai"]);
 
-export const PIC_OPTIONS = ["Diny", "Mizwar", "Zakiya", "Yua", "Candra"];
+export const PIC_OPTIONS = ["Diny", "Mizwar", "Zakiya", "Endah", "Yua", "Candra"];
 export const PLATFORM_OPTIONS = ["Shopee", "Tokopedia", "TikTok", "Manual"];
 
 // --- KONFIGURASI BACKGROUND ---

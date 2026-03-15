@@ -23,6 +23,7 @@ export default function SearchableSelect({
   options,
   placeholder = "Pilih…",
   className = "",
+  buttonClassName = "",
   disabled = false,
 }: {
   label?: string;
@@ -31,6 +32,7 @@ export default function SearchableSelect({
   options: Option[];
   placeholder?: string;
   className?: string;
+  buttonClassName?: string;
   disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -91,13 +93,13 @@ export default function SearchableSelect({
           }
         }}
         title={disabled ? "Terkunci" : ""}
-        className={`w-full px-3 py-2 rounded-xl border border-[#0a2342]/20 bg-white text-left transition
+        className={`w-full px-3 py-2.5 rounded-xl border border-[#0a2342]/20 bg-white text-left text-sm transition
           focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500
           ${disabled ? "opacity-70 cursor-not-allowed" : "cursor-pointer"}
-          flex items-center justify-between gap-2`}
+          flex items-center justify-between gap-2 ${buttonClassName}`}
       >
         <span
-          className={`${selectedLabel ? "text-neutral-900" : "text-neutral-400"}`}
+          className={`truncate ${selectedLabel ? "text-neutral-900" : "text-neutral-400"}`}
         >
           {selectedLabel || placeholder}
         </span>
